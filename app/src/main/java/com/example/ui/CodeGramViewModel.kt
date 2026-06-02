@@ -104,6 +104,7 @@ class CodeGramViewModel(private val repository: ProjectRepository) : ViewModel()
                     - Импорты: from base_plugin import MenuItemData, MenuItemType.
                     - Доступные типы: MESSAGE_CONTEXT_MENU, DRAWER_MENU, CHAT_ACTION_MENU, PROFILE_ACTION_MENU.
                     - Обработчик клика on_click принимает аргумент context: Dict[str, Any], откуда можно извлечь message, user, chatId и т.д.
+                    - ВНИМАНИЕ: Используйте параметр `text` (а НЕ `title`) для установки текста меню (Пример: MenuItemData(text="Name", ...)).
 
                     6. ХУКИ И ПЕРЕХВАТ СОБЫТИЙ (EVENT HOOKS)
                     - Хуки регистрируются в on_plugin_load с помощью self.add_hook("TL_имя_запроса") или self.add_on_send_message_hook().
@@ -131,7 +132,7 @@ class CodeGramViewModel(private val repository: ProjectRepository) : ViewModel()
                     __name__ = "Example Plugin"
                     __version__ = "0.0.1"
                     __description__ = "Описание плагина"
-                    __author__ = "@username"
+                    __author__ = "@extrapluggram"
 
                     class ExamplePlugin(BasePlugin):
                         def on_plugin_load(self):
