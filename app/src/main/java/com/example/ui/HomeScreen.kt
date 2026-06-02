@@ -6,7 +6,8 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.Code
+import androidx.compose.material.icons.filled.AutoFixHigh
+import androidx.compose.material.icons.filled.Code 
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.*
@@ -30,6 +31,12 @@ fun HomeScreen(
     var showCreateDialog by remember { mutableStateOf(false) }
 
     var showSettingsDialog by remember { mutableStateOf(false) }
+    var showAiGenerateDialog by remember { mutableStateOf(false) }
+
+    val context = androidx.compose.ui.platform.LocalContext.current
+    val sharedPrefs = remember { context.getSharedPreferences("settings", android.content.Context.MODE_PRIVATE) }
+    val geminiKey = sharedPrefs.getString("gemini_key", "") ?: ""
+    val isGeminiAvailable = geminiKey.isNotEmpty()
 
     Scaffold(
         topBar = {
@@ -47,12 +54,23 @@ fun HomeScreen(
             )
         },
         floatingActionButton = {
-            FloatingActionButton(
-                onClick = { showCreateDialog = true },
-                containerColor = MaterialTheme.colorScheme.primary,
-                contentColor = MaterialTheme.colorScheme.onPrimary
-            ) {
-                Icon(Icons.Default.Add, contentDescription = "New Project")
+            Column(horizontalAlignment = Alignment.End, verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                if (isGeminiAvailable) {
+                    ExtendedFloatingActionButton(
+                        onClick = { showAiGenerateDialog = true },
+                        containerColor = MaterialTheme.colorScheme.secondaryContainer,
+                        contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
+                        icon = { Icon(Icons.Default.AutoFixHigh, contentDescription = "Generate with AI") },
+                        text = { Text("AI Генерация") }
+                    )
+                }
+                FloatingActionButton(
+                    onClick = { showCreateDialog = true },
+                    containerColor = MaterialTheme.colorScheme.primary,
+                    contentColor = MaterialTheme.colorScheme.onPrimary
+                ) {
+                    Icon(Icons.Default.Add, contentDescription = "New Project")
+                }
             }
         },
         containerColor = MaterialTheme.colorScheme.background
@@ -98,6 +116,24 @@ fun HomeScreen(
                     showCreateDialog = false
                     onNavigateToEditor(newId)
                 }
+            }
+        )
+    }
+
+    if (showAiGenerateDialog) {
+        AiGenerateDialog(
+            geminiKey = geminiKey,
+            onDismiss = { showAiGenerateDialog = false },
+            onGenerate = { prompt, author ->
+                viewModel.generateProjectWithGemini(geminiKey, prompt, author,
+                    callback = { newId ->
+                        showAiGenerateDialog = false
+                        onNavigateToEditor(newId)
+                    },
+                    onError = { err ->
+                        android.widget.Toast.makeText(context, err, android.widget.Toast.LENGTH_LONG).show()
+                    }
+                )
             }
         )
     }
@@ -194,6 +230,74 @@ fun CreateProjectDialog(onDismiss: () -> Unit, onCreate: (String, String, String
         dismissButton = {
             TextButton(onClick = onDismiss) {
                 Text("Cancel")
+            }
+        }
+    )
+}
+
+@Composable
+fun AiGenerateDialog(geminiKey: String, onDismiss: () -> Unit, onGenerate: (String, String) -> Unit) {
+    var prompt by remember { mutableStateOf("") }
+    var author by remember { mutableStateOf("@extrapluggram") }
+    var isLoading by remember { mutableStateOf(false) }
+
+    AlertDialog(
+        onDismissRequest = { if (!isLoading) onDismiss() },
+        title = {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(Icons.Default.AutoFixHigh, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+                Spacer(modifier = Modifier.width(8.dp))
+                Text("Создать через ИИ")
+            }
+        },
+        text = {
+            if (isLoading) {
+                Column(
+                    modifier = Modifier.fillMaxWidth().padding(16.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.spacedBy(16.dp)
+                ) {
+                    CircularProgressIndicator()
+                    Text("Генерация плагина...")
+                }
+            } else {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text("Опишите, что должен делать плагин, и ИИ напишет его код для вас.", style = MaterialTheme.typography.bodySmall)
+                    OutlinedTextField(
+                        value = prompt,
+                        onValueChange = { prompt = it },
+                        label = { Text("Описание плагина") },
+                        maxLines = 5,
+                        modifier = Modifier.fillMaxWidth().height(120.dp)
+                    )
+                    OutlinedTextField(
+                        value = author,
+                        onValueChange = { author = it },
+                        label = { Text("Автор") },
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                }
+            }
+        },
+        confirmButton = {
+            if (!isLoading) {
+                Button(
+                    onClick = {
+                        isLoading = true
+                        onGenerate(prompt, author)
+                    },
+                    enabled = prompt.isNotBlank() && author.isNotBlank()
+                ) {
+                    Text("Сгенерировать")
+                }
+            }
+        },
+        dismissButton = {
+            if (!isLoading) {
+                TextButton(onClick = onDismiss) {
+                    Text("Отмена")
+                }
             }
         }
     )
