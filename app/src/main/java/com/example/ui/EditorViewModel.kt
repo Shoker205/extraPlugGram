@@ -68,18 +68,44 @@ class EditorViewModel(
         viewModelScope.launch {
             _state.update { it.copy(isCompiling = true, logs = currentLog + "> AI action: $action...") }
             
-            val sysPrompt = "Вы — ИИ-помощник по разработке Python-плагинов для ExteraGram/AyuGram.\n"
+            val sysPrompt = """
+                Вы — ИИ-помощник по разработке Python-плагинов для ExteraGram/AyuGram.
+                СТРОГИЕ ПРАВИЛА:
+                1. ИСПОЛЬЗУЙ ТОЛЬКО ВСТРОЕННЫЕ МОДУЛИ Python (os, time, re и т.д.) И ПРЕДОСТАВЛЕННЫЕ плагином (`base_plugin`, `android_utils` и др.). ЗАПРЕЩЕНЫ: requests, numpy, flask, bs4 и любые другие внешние библиотеки! Используй `urllib.request` для сети, если необходимо.
+                2. Класс `HookStrategy` имеет ТОЛЬКО значения: `DEFAULT`, `CANCEL`, `MODIFY`. У него НЕТ значения `BEFORE` или `AFTER`.
+            """.trimIndent()
             val prompt = when (action) {
-                "Generate" -> sysPrompt + "Пользователь хочет изменить/написать логику. Текущий код:\n```python\n$code\n```\nЗадача: $customPrompt\nОпираясь на опыт написания плагинов, напиши ПОЛНЫЙ обновленный код ТОЛЬКО кодом без блоков форматирования (например, ```python), так как ответ пойдет напрямую в файл."
-                "Evaluate" -> sysPrompt + "Оцени этот Python-код плагина. Проверь правильность использования хуков (find_class, run_on_ui_thread) и отлова исключений. Код:\n```python\n$code\n```\nОтвечай кратко и только по делу."
-                "Improve" -> sysPrompt + "Улучши этот Python-код плагина. Делай его безопаснее (обработка исключений, проверки), чище и оптимизированнее. Обрати внимание на Android API. Верни ПОЛНЫЙ обновленный код ТОЛЬКО кодом без markdown-оформления (```). Код:\n```python\n$code\n```"
+                "Generate" -> sysPrompt + "\nПользователь хочет изменить/написать логику. Текущий код:\n```python\n$code\n```\nЗадача: $customPrompt\nОпираясь на опыт написания плагинов, напиши ПОЛНЫЙ обновленный код ТОЛЬКО кодом без блоков форматирования (например, ```python), так как ответ пойдет напрямую в файл. Автоматически учитывай правила выше."
+                "Evaluate" -> sysPrompt + "\nОцени этот Python-код плагина. Проверь правильность использования хуков, отсутствие неизвестных атрибутов перечислений (например, HookStrategy.BEFORE), использование только встроенных библиотек и Android API. Код:\n```python\n$code\n```\nОтвечай кратко и только по делу."
+                "Improve" -> sysPrompt + "\nУлучши этот Python-код плагина. Делай его безопаснее (обработка исключений), чище и оптимизированнее. Убедись, что нет обращений к внешним библиотекам или неверным enum. Верни ПОЛНЫЙ обновленный код ТОЛЬКО кодом без markdown-оформления (```). Код:\n```python\n$code\n```"
                 else -> "Analyze this code:\n$code"
             }
 
             val response = com.example.data.GeminiHelper.complete(apiKey, prompt)
 
             if (action == "Generate" || action == "Improve") {
-                val cleanedCode = response.replace("```python", "").replace("```", "").trim()
+                var cleanedCode = response.replace("```python", "").replace("```", "").trim()
+                
+                // Bump version automatically
+                val versionMatch = Regex("""__version__\s*=\s*(['"])(.*?)\1""").find(cleanedCode)
+                if (versionMatch != null) {
+                    val currentVersion = versionMatch.groupValues[2]
+                    val parts = currentVersion.split(".")
+                    if (parts.size == 3) {
+                        try {
+                            val newPatch = parts[2].toInt() + 1
+                            val newVersion = "${parts[0]}.${parts[1]}.$newPatch"
+                            cleanedCode = cleanedCode.replaceFirst(versionMatch.value, "__version__ = \"$newVersion\"")
+                        } catch (e: Exception) {}
+                    } else if (parts.size == 2) {
+                        try {
+                            val newPatch = parts[1].toInt() + 1
+                            val newVersion = "${parts[0]}.$newPatch"
+                            cleanedCode = cleanedCode.replaceFirst(versionMatch.value, "__version__ = \"$newVersion\"")
+                        } catch (e: Exception) {}
+                    }
+                }
+
                 if (cleanedCode.isNotEmpty() && !cleanedCode.startsWith("Error:")) {
                     updateCode(cleanedCode)
                     _state.update { it.copy(logs = it.logs + "[AI] Successfully applied changes.", isCompiling = false) }

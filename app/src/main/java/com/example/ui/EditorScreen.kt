@@ -48,6 +48,7 @@ fun EditorScreen(
 
     var showAiDialog by remember { mutableStateOf(false) }
     var showTemplatesDialog by remember { mutableStateOf(false) }
+    var showExportVersionDialog by remember { mutableStateOf(false) }
 
     val exportLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.CreateDocument("application/octet-stream")
@@ -107,8 +108,7 @@ fun EditorScreen(
                     Icon(Icons.Default.AutoFixHigh, contentDescription = "AI Action", tint = PrimaryAccent)
                 }
                 IconButton(onClick = {
-                    val safeName = state.project?.name?.replace("""[^a-zA-Z0-9.\-]""".toRegex(), "_") ?: "project"
-                    exportLauncher.launch("$safeName.plugin")
+                    showExportVersionDialog = true
                 }) {
                     Icon(Icons.Default.IosShare, contentDescription = "Export SAF", tint = PrimaryAccent)
                 }
@@ -147,6 +147,63 @@ fun EditorScreen(
             }
         )
     }
+
+    if (showExportVersionDialog) {
+        ExportVersionDialog(
+            currentCode = state.project?.pluginCode ?: "",
+            onDismiss = { showExportVersionDialog = false },
+            onExport = { newCode ->
+                viewModel.updateCode(newCode)
+                val safeName = state.project?.name?.replace("""[^a-zA-Z0-9.\-]""".toRegex(), "_") ?: "project"
+                exportLauncher.launch("$safeName.plugin")
+                showExportVersionDialog = false
+            }
+        )
+    }
+}
+
+@Composable
+fun ExportVersionDialog(currentCode: String, onDismiss: () -> Unit, onExport: (String) -> Unit) {
+    // Parse current version
+    val versionMatch = Regex("""__version__\s*=\s*(['"])(.*?)\1""").find(currentCode)
+    var currentVersionDesc by remember { mutableStateOf(versionMatch?.groupValues?.get(2) ?: "1.0.0") }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Экспорт плагина") },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                Text("Установите версию плагина перед экспортом (рекомендуется повышать версию при обновлениях).", style = MaterialTheme.typography.bodySmall)
+                OutlinedTextField(
+                    value = currentVersionDesc,
+                    onValueChange = { currentVersionDesc = it },
+                    label = { Text("Версия") },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth()
+                )
+            }
+        },
+        confirmButton = {
+            Button(onClick = {
+                var newCode = currentCode
+                if (versionMatch != null) {
+                    newCode = newCode.replaceFirst(versionMatch.value, "__version__ = \"$currentVersionDesc\"")
+                } else if (newCode.contains("__author__")) {
+                    newCode = newCode.replaceFirst("__author__", "__version__ = \"$currentVersionDesc\"\n__author__")
+                } else {
+                    newCode = "__version__ = \"$currentVersionDesc\"\n" + newCode
+                }
+                onExport(newCode)
+            }) {
+                Text("Экспорт")
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Отмена")
+            }
+        }
+    )
 }
 
 @Composable

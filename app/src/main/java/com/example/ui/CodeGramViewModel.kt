@@ -80,8 +80,11 @@ class CodeGramViewModel(private val repository: ProjectRepository) : ViewModel()
                     - `hook_utils` (find_class)
                     - `ui.settings` (Header, Switch, Text, Divider, Input)
                     - `ui.bulletin` (BulletinHelper)
+                    СТРОГИЕ ПРАВИЛА:
+                    1. Запрещено использовать внешние библиотеки Python (Requests, NumPy, Flask и т.д.). Только встроенные модули и Android Java API.
+                    2. HookStrategy содержит ТОЛЬКО значения: DEFAULT, CANCEL, MODIFY. У нее НЕТ значения BEFORE или AFTER! (Пример: return HookResult(strategy=HookStrategy.DEFAULT))
                     UI строится на Android API. Плагин должен наследоваться от BasePlugin.
-                    Включай метаданные: __id__, __name__, __description__, __author__, __version__.
+                    Включай метаданные: __id__, __name__, __description__, __author__, __version__. Начальная версия: 0.0.1.
                     СТРОГО возвращай ТОЛЬКО ЧИСТЫЙ КОД Python (никаких markdown-блоков ```python или пояснений), так как твой ответ напрямую записывается в .plugin файл.
                 """.trimIndent()
                 val codeResponse = com.example.data.GeminiHelper.complete(apiKey, "$sysPrompt\nUser request: $prompt")
