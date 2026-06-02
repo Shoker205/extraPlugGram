@@ -143,6 +143,16 @@ fun EditorScreen(
             onDismiss = { showTemplatesDialog = false },
             onSelect = { code -> 
                 viewModel.updateCode(code)
+                if (geminiKey.isNotEmpty()) {
+                    viewModel.addLog("[System] Валидация шаблона...")
+                    viewModel.invokeGeminiCustom(
+                        geminiKey,
+                        "Improve",
+                        "Проверь этот шаблон. Убедись, что присутствуют все обязательные метаданные (включая __id__), импорты и структура. Если что-то не так, верни исправленный код."
+                    )
+                } else {
+                    viewModel.addLog("[System] Валидация пропущена: Gemini API ключ не установлен.")
+                }
                 showTemplatesDialog = false
             }
         )

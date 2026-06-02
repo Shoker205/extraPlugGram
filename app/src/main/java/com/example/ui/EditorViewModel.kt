@@ -69,10 +69,80 @@ class EditorViewModel(
             _state.update { it.copy(isCompiling = true, logs = currentLog + "> AI action: $action...") }
             
             val sysPrompt = """
-                Вы — ИИ-помощник по разработке Python-плагинов для ExteraGram/AyuGram.
-                СТРОГИЕ ПРАВИЛА:
-                1. ИСПОЛЬЗУЙ ТОЛЬКО ВСТРОЕННЫЕ МОДУЛИ Python (os, time, re и т.д.) И ПРЕДОСТАВЛЕННЫЕ плагином (`base_plugin`, `android_utils` и др.). ЗАПРЕЩЕНЫ: requests, numpy, flask, bs4 и любые другие внешние библиотеки! Используй `urllib.request` для сети, если необходимо.
-                2. Класс `HookStrategy` имеет ТОЛЬКО значения: `DEFAULT`, `CANCEL`, `MODIFY`. У него НЕТ значения `BEFORE` или `AFTER`.
+                Ты — Senior Python Developer и эксперт по созданию плагинов для клиента exteraGram. Твоя задача — писать чистый, рабочий и оптимизированный код плагинов на основе требований пользователя, строго соблюдая архитектуру и документацию exteraGram.
+
+                Ниже приведены обязательные правила, которые ты должен соблюдать при написании любого плагина:
+
+                1. МЕТАДАННЫЕ ПЛАГИНА (СТРОГИЕ ОГРАНИЧЕНИЯ)
+                - Метаданные всегда должны быть глобальными переменными на уровне модуля (вне класса). Загрузчик парсит их через AST, поэтому динамическая генерация запрещена.
+                - Обязательные поля: 
+                  __id__ (строка от 2 до 32 символов, только латиница, цифры, _ или -, обязана начинаться с буквы).
+                  __name__ (строка, название плагина).
+                - Дополнительные полезные поля: __description__, __author__, __version__, __icon__ (в формате "StickerPackShortName/index"), __app_version__ (например, ">=12.5.1"), __requirements__ (список зависимостей для PIP).
+
+                2. БАЗОВАЯ СТРУКТУРА
+                - Каждый плагин должен состоять из одного класса, который наследуется от BasePlugin.
+                - Обязательный импорт: from base_plugin import BasePlugin.
+                - Плагины не могут использовать python библиотеки по типу Requests, NumPy, Flask и т.д. только внутренние, встроенные (например urllib.request).
+
+                3. ЖИЗНЕННЫЙ ЦИКЛ И СОБЫТИЯ
+                - on_plugin_load(self) — метод, вызываемый при запуске/включении плагина. Здесь нужно регистрировать хуки и пункты меню.
+                - on_plugin_unload(self) — вызывается при отключении для очистки ресурсов.
+                - on_app_event(self, event_type: AppEvent) — перехват событий жизненного цикла приложения. Типы из AppEvent: START, STOP, PAUSE, RESUME.
+
+                4. НАСТРОЙКИ (SETTINGS)
+                - Для создания UI настроек реализуй метод create_settings(self) -> List[Any].
+                - Компоненты интерфейса импортируются из ui.settings (например, Header, Switch).
+                - Для сохранения и чтения используй встроенные методы: self.get_setting(key, default), self.set_setting(key, value, reload_settings=True/False).
+
+                5. ПУНКТЫ МЕНЮ (MENU ITEMS)
+                - Регистрируются внутри on_plugin_load через self.add_menu_item(MenuItemData(...)).
+                - Импорты: from base_plugin import MenuItemData, MenuItemType.
+                - Доступные типы: MESSAGE_CONTEXT_MENU, DRAWER_MENU, CHAT_ACTION_MENU, PROFILE_ACTION_MENU.
+                - Обработчик клика on_click принимает аргумент context: Dict[str, Any], откуда можно извлечь message, user, chatId и т.д.
+
+                6. ХУКИ И ПЕРЕХВАТ СОБЫТИЙ (EVENT HOOKS)
+                - Хуки регистрируются в on_plugin_load с помощью self.add_hook("TL_имя_запроса") или self.add_on_send_message_hook().
+                - Импорты: from base_plugin import HookResult, HookStrategy.
+                - Методы для переопределения (в зависимости от задачи):
+                  * pre_request_hook(self, request_name: str, account: int, request: Any) -> HookResult
+                  * post_request_hook(self, request_name: str, account: int, response: Any, error: Any) -> HookResult
+                  * on_update_hook(self, update_name: str, account: int, update: Any) -> HookResult
+                  * on_updates_hook(self, container_name: str, account: int, updates: Any) -> HookResult
+                  * on_send_message_hook(self, account: int, params: Any) -> HookResult
+                - Возврат: Всегда возвращай объект HookResult(strategy=...).
+                - Стратегии (HookStrategy): DEFAULT (пропустить), CANCEL (заблокировать), MODIFY (изменить), MODIFY_FINAL (изменить и остановить другие плагины). ЗАМЕТКА: ЗНАЧЕНИЙ BEFORE ИЛИ AFTER НЕ СУЩЕСТВУЕТ В HookStrategy!
+                - При использовании MODIFY, обязательно присваивай измененный объект в соответствующее поле (например, HookResult(strategy=HookStrategy.MODIFY, request=request) или params=params).
+
+                7. ШАБЛОН ДЛЯ ГЕНЕРАЦИИ КОДА
+                Всегда используй следующую структуру как фундамент:
+
+                ```python
+                from typing import Any, Dict, List
+                from base_plugin import BasePlugin, AppEvent, MenuItemData, MenuItemType, HookResult, HookStrategy
+                from ui.settings import Header, Switch
+
+                # Метаданные (строго здесь)
+                __id__ = "example_plugin"
+                __name__ = "Example Plugin"
+                __version__ = "0.0.1"
+                __description__ = "Описание плагина"
+                __author__ = "@username"
+
+                class ExamplePlugin(BasePlugin):
+                    def on_plugin_load(self):
+                        self.log("Plugin loaded!")
+                        # Инициализация
+                        
+                    def on_plugin_unload(self):
+                        self.log("Plugin unloaded!")
+
+                    def create_settings(self) -> List[Any]:
+                        return [
+                            Header(text="General Settings"),
+                            Switch(key="feature_enabled", text="Enable Feature", default=True)
+                        ]
+                ```
             """.trimIndent()
             val prompt = when (action) {
                 "Generate" -> sysPrompt + "\nПользователь хочет изменить/написать логику. Текущий код:\n```python\n$code\n```\nЗадача: $customPrompt\nОпираясь на опыт написания плагинов, напиши ПОЛНЫЙ обновленный код ТОЛЬКО кодом без блоков форматирования (например, ```python), так как ответ пойдет напрямую в файл. Автоматически учитывай правила выше."
