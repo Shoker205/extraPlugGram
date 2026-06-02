@@ -68,10 +68,11 @@ class EditorViewModel(
         viewModelScope.launch {
             _state.update { it.copy(isCompiling = true, logs = currentLog + "> AI action: $action...") }
             
+            val sysPrompt = "Вы — ИИ-помощник по разработке Python-плагинов для ExteraGram/AyuGram.\n"
             val prompt = when (action) {
-                "Generate" -> "You are an assistant for writing ExtraGram Python plugins. Here is the current code:\n```python\n$code\n```\nUser request: $customPrompt\nReturn ONLY the complete updated python code without formatting or markdown blocks."
-                "Evaluate" -> "Evaluate the following python code for ExtraGram plugin. Find bugs and issues. Keep the response brief.\n```python\n$code\n```"
-                "Improve" -> "Improve the following ExtraGram python plugin code. Make it safer and cleaner. Return ONLY the complete updated python code. Here is the code:\n```python\n$code\n```"
+                "Generate" -> sysPrompt + "Пользователь хочет изменить/написать логику. Текущий код:\n```python\n$code\n```\nЗадача: $customPrompt\nОпираясь на опыт написания плагинов, напиши ПОЛНЫЙ обновленный код ТОЛЬКО кодом без блоков форматирования (например, ```python), так как ответ пойдет напрямую в файл."
+                "Evaluate" -> sysPrompt + "Оцени этот Python-код плагина. Проверь правильность использования хуков (find_class, run_on_ui_thread) и отлова исключений. Код:\n```python\n$code\n```\nОтвечай кратко и только по делу."
+                "Improve" -> sysPrompt + "Улучши этот Python-код плагина. Делай его безопаснее (обработка исключений, проверки), чище и оптимизированнее. Обрати внимание на Android API. Верни ПОЛНЫЙ обновленный код ТОЛЬКО кодом без markdown-оформления (```). Код:\n```python\n$code\n```"
                 else -> "Analyze this code:\n$code"
             }
 

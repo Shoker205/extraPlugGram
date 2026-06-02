@@ -1,5 +1,7 @@
 package com.example.ui
 
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -10,6 +12,7 @@ import androidx.compose.material.icons.filled.AutoFixHigh
 import androidx.compose.material.icons.filled.Code 
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.Upload
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -38,6 +41,30 @@ fun HomeScreen(
     val geminiKey = sharedPrefs.getString("gemini_key", "") ?: ""
     val isGeminiAvailable = geminiKey.isNotEmpty()
 
+    val importLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.GetContent()
+    ) { uri ->
+        if (uri != null) {
+            try {
+                val content = context.contentResolver.openInputStream(uri)?.bufferedReader()?.use { it.readText() }
+                if (content != null) {
+                    val nameMatch = Regex("""__name__\s*=\s*['"](.*?)['"]""").find(content)
+                    val name = nameMatch?.groupValues?.get(1) ?: "Импортирован"
+                    val authorMatch = Regex("""__author__\s*=\s*['"](.*?)['"]""").find(content)
+                    val author = authorMatch?.groupValues?.get(1) ?: "@extrapluggram"
+                    val descMatch = Regex("""__description__\s*=\s*['"](.*?)['"]""").find(content)
+                    val desc = descMatch?.groupValues?.get(1) ?: ""
+                    
+                    viewModel.importProject(name, author, desc, content) {
+                        android.widget.Toast.makeText(context, "Плагин '$name' импортирован", android.widget.Toast.LENGTH_SHORT).show()
+                    }
+                }
+            } catch (e: Exception) {
+                android.widget.Toast.makeText(context, "Ошибка импорта", android.widget.Toast.LENGTH_SHORT).show()
+            }
+        }
+    }
+
     Scaffold(
         topBar = {
             TopAppBar(
@@ -47,6 +74,9 @@ fun HomeScreen(
                     titleContentColor = MaterialTheme.colorScheme.primary
                 ),
                 actions = {
+                    IconButton(onClick = { importLauncher.launch("*/*") }) {
+                        Icon(Icons.Default.Upload, contentDescription = "Import", tint = MaterialTheme.colorScheme.primary)
+                    }
                     IconButton(onClick = { showSettingsDialog = true }) {
                         Icon(Icons.Default.Settings, contentDescription = "Settings", tint = MaterialTheme.colorScheme.primary)
                     }

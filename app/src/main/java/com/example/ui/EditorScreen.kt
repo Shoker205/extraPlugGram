@@ -9,6 +9,8 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -45,6 +47,7 @@ fun EditorScreen(
     val geminiKey = sharedPrefs.getString("gemini_key", "") ?: ""
 
     var showAiDialog by remember { mutableStateOf(false) }
+    var showTemplatesDialog by remember { mutableStateOf(false) }
 
     val exportLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.CreateDocument("application/octet-stream")
@@ -97,6 +100,9 @@ fun EditorScreen(
                 }
             }
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                IconButton(onClick = { showTemplatesDialog = true }) {
+                    Icon(androidx.compose.material.icons.Icons.Default.MenuBook, contentDescription = "Templates", tint = PrimaryAccent)
+                }
                 IconButton(onClick = { showAiDialog = true }) {
                     Icon(Icons.Default.AutoFixHigh, contentDescription = "AI Action", tint = PrimaryAccent)
                 }
@@ -131,6 +137,161 @@ fun EditorScreen(
             }
         )
     }
+
+    if (showTemplatesDialog) {
+        TemplatesDialog(
+            onDismiss = { showTemplatesDialog = false },
+            onSelect = { code -> 
+                viewModel.updateCode(code)
+                showTemplatesDialog = false
+            }
+        )
+    }
+}
+
+@Composable
+fun TemplatesDialog(onDismiss: () -> Unit, onSelect: (String) -> Unit) {
+    val templates = listOf(
+        "Ping (Команда)" to """
+from base_plugin import BasePlugin, HookResult, HookStrategy
+from android_utils import log
+
+__name__ = "Ping Plugin"
+__description__ = "Отвечает Pong на команду .ping"
+__version__ = "1.0.0"
+__author__ = "@extrapluggram"
+
+class MyPlugin(BasePlugin):
+    def on_plugin_load(self):
+        self.add_hook("TL_updateNewMessage")
+        log("Ping Plugin loaded")
+        
+    def on_update_hook(self, update_name, account, update) -> HookResult:
+        msg = getattr(update, "message", None)
+        if msg and getattr(msg, "message", "") == ".ping":
+            log("Ping received!")
+        return HookResult(strategy=HookStrategy.DEFAULT)
+        """.trimIndent(),
+        
+        "Message Logger" to """
+from base_plugin import BasePlugin, HookResult, HookStrategy
+from android_utils import log
+
+__name__ = "Message Logger"
+__description__ = "Логирует все входящие сообщения в консоль"
+__version__ = "1.0.0"
+__author__ = "@extrapluggram"
+
+class MessageLoggerPlugin(BasePlugin):
+    def on_plugin_load(self):
+        self.add_hook("TL_updateNewMessage")
+
+    def on_update_hook(self, update_name, account, update) -> HookResult:
+        msg = getattr(update, "message", None)
+        if msg:
+            text = getattr(msg, "message", "")
+            if text:
+                log(f"New message: {text}")
+        return HookResult(strategy=HookStrategy.DEFAULT)
+        """.trimIndent(),
+        
+        "Auto-responder" to """
+from base_plugin import BasePlugin, HookResult, HookStrategy
+from android_utils import log
+
+__name__ = "Auto Responder"
+__description__ = "Автоответчик на личные сообщения"
+__version__ = "1.0.0"
+__author__ = "@extrapluggram"
+
+class AutoResponderPlugin(BasePlugin):
+    def on_plugin_load(self):
+        self.add_hook("TL_updateNewMessage")
+
+    def on_update_hook(self, update_name, account, update) -> HookResult:
+        # Example logic, intercept and send response
+        msg = getattr(update, "message", None)
+        if msg and not getattr(msg, "out", False):
+            text = getattr(msg, "message", "")
+            if text == "Привет":
+                log("Intercepted 'Привет', should respond!")
+                # Insert response API call here
+        return HookResult(strategy=HookStrategy.DEFAULT)
+        """.trimIndent(),
+        
+        "Theme Modifier" to """
+from base_plugin import BasePlugin, MethodHook
+from hook_utils import find_class
+from android_utils import log
+
+__name__ = "Theme Modifier"
+__description__ = "Пример изменения цветов темы"
+__version__ = "1.0.0"
+__author__ = "@extrapluggram"
+
+class ThemeModifierPlugin(BasePlugin):
+    def on_plugin_load(self):
+        try:
+            ThemeClass = find_class("org.telegram.ui.ActionBar.Theme")
+            m = ThemeClass.getDeclaredMethod("getColor", find_class("java.lang.String"))
+            
+            class ColorHook(MethodHook):
+                def before_hooked_method(self, param):
+                    key = str(param.args[0])
+                    # Example: change background to red
+                    if key == "windowBackgroundWhite":
+                        # Return Red (0xFFFF0000 -> integer)
+                        param.setResult(-65536)
+                        
+            self.hook_method(m, ColorHook())
+        except Exception as e:
+            log(f"Hook error: {e}")
+        """.trimIndent(),
+
+        "Base Structure" to """
+from base_plugin import BasePlugin, HookResult, HookStrategy
+from android_utils import log, run_on_ui_thread
+
+__name__ = "New Plugin"
+__description__ = "Basic plugin structure"
+__version__ = "1.0.0"
+__author__ = "@extrapluggram"
+
+class Plugin(BasePlugin):
+    def on_plugin_load(self):
+        log("Plugin loaded")
+
+    def on_plugin_unload(self):
+        log("Plugin unloaded")
+        """.trimIndent()
+    )
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Шаблоны плагинов") },
+        text = {
+            LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                items(templates) { (name, code) ->
+                    Card(
+                        modifier = Modifier.fillMaxWidth().clickable { onSelect(code) },
+                        colors = CardDefaults.cardColors(containerColor = SurfaceVariantDark)
+                    ) {
+                        Text(
+                            text = name,
+                            color = TextPrimary,
+                            modifier = Modifier.padding(16.dp),
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Отмена")
+            }
+        }
+    )
 }
 
 @Composable
