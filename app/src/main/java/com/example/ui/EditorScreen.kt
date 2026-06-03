@@ -68,6 +68,8 @@ fun EditorScreen(
         }
     }
 
+    var showConsole by remember { mutableStateOf(true) }
+
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -101,6 +103,13 @@ fun EditorScreen(
                 }
             }
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                IconButton(onClick = { showConsole = !showConsole }) {
+                    Icon(
+                        if (showConsole) Icons.Default.KeyboardArrowDown else Icons.Default.KeyboardArrowUp,
+                        contentDescription = "Toggle Console", 
+                        tint = PrimaryAccent
+                    )
+                }
                 IconButton(onClick = { showTemplatesDialog = true }) {
                     Icon(androidx.compose.material.icons.Icons.Default.MenuBook, contentDescription = "Templates", tint = PrimaryAccent)
                 }
@@ -123,7 +132,13 @@ fun EditorScreen(
                     onCodeChange = viewModel::updateCode,
                     modifier = Modifier.weight(1f)
                 )
-                ConsoleArea(logs = state.logs)
+                androidx.compose.animation.AnimatedVisibility(
+                    visible = showConsole,
+                    enter = androidx.compose.animation.slideInVertically(initialOffsetY = { it }) + androidx.compose.animation.expandVertically(expandFrom = Alignment.Top),
+                    exit = androidx.compose.animation.slideOutVertically(targetOffsetY = { it }) + androidx.compose.animation.shrinkVertically(shrinkTowards = Alignment.Top)
+                ) {
+                    ConsoleArea(logs = state.logs)
+                }
             }
         }
     }
@@ -180,14 +195,14 @@ fun ExportVersionDialog(currentCode: String, onDismiss: () -> Unit, onExport: (S
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Экспорт плагина") },
+        title = { Text(getLangText("Экспорт плагина", "Export Plugin")) },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
-                Text("Установите версию плагина перед экспортом (рекомендуется повышать версию при обновлениях).", style = MaterialTheme.typography.bodySmall)
+                Text(getLangText("Установите версию плагина перед экспортом (рекомендуется повышать версию при обновлениях).", "Set the plugin version before exporting (it is recommended to increase the version on updates)."), style = MaterialTheme.typography.bodySmall)
                 OutlinedTextField(
                     value = currentVersionDesc,
                     onValueChange = { currentVersionDesc = it },
-                    label = { Text("Версия") },
+                    label = { Text(getLangText("Версия", "Version")) },
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth()
                 )
@@ -205,12 +220,12 @@ fun ExportVersionDialog(currentCode: String, onDismiss: () -> Unit, onExport: (S
                 }
                 onExport(newCode)
             }) {
-                Text("Экспорт")
+                Text(getLangText("Экспорт", "Export"))
             }
         },
         dismissButton = {
             TextButton(onClick = onDismiss) {
-                Text("Отмена")
+                Text(getLangText("Отмена", "Cancel"))
             }
         }
     )
@@ -335,7 +350,7 @@ class Plugin(BasePlugin):
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Шаблоны плагинов") },
+        title = { Text(getLangText("Шаблоны плагинов", "Plugin Templates")) },
         text = {
             LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 items(templates) { (name, code) ->
@@ -355,7 +370,7 @@ class Plugin(BasePlugin):
         },
         confirmButton = {
             TextButton(onClick = onDismiss) {
-                Text("Отмена")
+                Text(getLangText("Отмена", "Cancel"))
             }
         }
     )
@@ -367,16 +382,16 @@ fun AiActionDialog(geminiKey: String, onDismiss: () -> Unit, onAction: (String, 
     
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Запрос к ИИ") },
+        title = { Text(getLangText("Запрос к ИИ", "AI Prompt")) },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
                 if (geminiKey.isEmpty()) {
-                    Text("API ключ Gemini не установлен. Пожалуйста, добавьте его в настройках.", color = MaterialTheme.colorScheme.error, fontSize = 14.sp)
+                    Text(getLangText("API ключ Gemini не установлен. Пожалуйста, добавьте его в настройках.", "Gemini API key is not set. Please add it in settings."), color = MaterialTheme.colorScheme.error, fontSize = 14.sp)
                 } else {
                     OutlinedTextField(
                         value = aiPrompt,
                         onValueChange = { aiPrompt = it },
-                        label = { Text("Отредактируй плагин...") },
+                        label = { Text(getLangText("Отредактируй плагин...", "Edit the plugin...")) },
                         modifier = Modifier.fillMaxWidth()
                     )
                     Row(
@@ -384,10 +399,10 @@ fun AiActionDialog(geminiKey: String, onDismiss: () -> Unit, onAction: (String, 
                         horizontalArrangement = Arrangement.SpaceEvenly
                     ) {
                         Button(onClick = { onAction("Evaluate", ""); onDismiss() }) {
-                            Text("Оценить")
+                            Text(getLangText("Оценить", "Evaluate"))
                         }
                         Button(onClick = { onAction("Improve", ""); onDismiss() }) {
-                            Text("Улучшить")
+                            Text(getLangText("Улучшить", "Improve"))
                         }
                     }
                 }
@@ -399,13 +414,13 @@ fun AiActionDialog(geminiKey: String, onDismiss: () -> Unit, onAction: (String, 
                     onClick = { onAction("Generate", aiPrompt); onDismiss() },
                     enabled = aiPrompt.isNotBlank()
                 ) {
-                    Text("Отправить")
+                    Text(getLangText("Отправить", "Submit"))
                 }
             }
         },
         dismissButton = {
             TextButton(onClick = onDismiss) {
-                Text("Отмена")
+                Text(getLangText("Отмена", "Cancel"))
             }
         }
     )
@@ -413,44 +428,98 @@ fun AiActionDialog(geminiKey: String, onDismiss: () -> Unit, onAction: (String, 
 
 @Composable
 fun CodeEditorArea(code: String, onCodeChange: (String) -> Unit, modifier: Modifier = Modifier) {
-    Row(modifier = modifier.fillMaxSize().background(BgDark)) {
-        // Line Numbers
-        val lineCount = maxOf(code.count { it == '\n' } + 1, 10)
-        Column(
+    val verticalScrollState = rememberScrollState()
+    val errors = remember(code) { detectErrors(code) }
+    var selectedError by remember { mutableStateOf<CodeError?>(null) }
+    
+    Box(modifier = modifier) {
+        Row(
             modifier = Modifier
-                .width(36.dp)
+                .fillMaxSize()
                 .background(BgDark)
-                .padding(top = 16.dp),
-            horizontalAlignment = Alignment.CenterHorizontally
+                .verticalScroll(verticalScrollState)
         ) {
-            for (i in 1..lineCount) {
-                Text(
-                    text = i.toString(),
-                    color = TextSecondary,
-                    fontSize = 11.sp,
-                    fontFamily = FontFamily.Monospace,
-                    textAlign = TextAlign.Center,
-                    modifier = Modifier.height(24.dp)
-                )
+            // Line Numbers
+            val lineCount = maxOf(code.count { it == '\n' } + 1, 10)
+            Column(
+                modifier = Modifier
+                    .width(36.dp)
+                    .background(BgDark)
+                    .padding(top = 16.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                for (i in 1..lineCount) {
+                    Text(
+                        text = i.toString(),
+                        color = TextSecondary,
+                        fontSize = 11.sp,
+                        fontFamily = FontFamily.Monospace,
+                        textAlign = TextAlign.Center,
+                        modifier = Modifier.height(24.dp)
+                    )
+                }
             }
+
+            BasicTextField(
+                value = code,
+                onValueChange = onCodeChange,
+                textStyle = TextStyle(
+                    color = TextPrimary,
+                    fontFamily = FontFamily.Monospace,
+                    fontSize = 13.sp,
+                    lineHeight = 24.sp
+                ),
+                cursorBrush = SolidColor(PrimaryAccent),
+                visualTransformation = PythonVisualTransformation(errors),
+                modifier = Modifier
+                    .weight(1f)
+                    .horizontalScroll(rememberScrollState())
+                    .padding(top = 16.dp, start = 8.dp, end = 12.dp)
+            )
         }
 
-        BasicTextField(
-            value = code,
-            onValueChange = onCodeChange,
-            textStyle = TextStyle(
-                color = TextPrimary,
-                fontFamily = FontFamily.Monospace,
-                fontSize = 13.sp,
-                lineHeight = 24.sp
-            ),
-            cursorBrush = SolidColor(PrimaryAccent),
-            modifier = Modifier
-                .weight(1f)
-                .fillMaxHeight()
-                .horizontalScroll(rememberScrollState())
-                .padding(top = 16.dp, start = 8.dp, end = 12.dp)
-        )
+        // Lightbulbs for errors (simple approach: show a persistent lightbulb if there is an error)
+        androidx.compose.animation.AnimatedVisibility(
+            visible = errors.isNotEmpty(),
+            enter = androidx.compose.animation.fadeIn() + androidx.compose.animation.scaleIn(),
+            exit = androidx.compose.animation.fadeOut() + androidx.compose.animation.scaleOut(),
+            modifier = Modifier.align(Alignment.BottomEnd).padding(16.dp)
+        ) {
+            val haptic = androidx.compose.ui.platform.LocalHapticFeedback.current
+            FloatingActionButton(
+                onClick = { 
+                    haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.LongPress)
+                    selectedError = errors.firstOrNull() 
+                },
+                containerColor = MaterialTheme.colorScheme.tertiaryContainer,
+                contentColor = MaterialTheme.colorScheme.onTertiaryContainer
+            ) {
+                Icon(Icons.Default.Lightbulb, contentDescription = "Hint")
+            }
+        }
+        
+        if (selectedError != null) {
+            AlertDialog(
+                onDismissRequest = { selectedError = null },
+                title = { Text(getLangText("Возможная ошибка", "Possible error")) },
+                text = { Text(getLangText("Найдено: '${selectedError?.word}'. Возможно, вы имели в виду '${selectedError?.suggestion}'?", "Found: '${selectedError?.word}'. Did you mean '${selectedError?.suggestion}'?")) },
+                confirmButton = {
+                    Button(onClick = {
+                        val e = selectedError
+                        if (e != null) {
+                            val newCode = code.replaceRange(e.start, e.end, e.suggestion)
+                            onCodeChange(newCode)
+                        }
+                        selectedError = null
+                    }) {
+                        Text(getLangText("Исправить", "Fix"))
+                    }
+                },
+                dismissButton = {
+                    TextButton(onClick = { selectedError = null }) { Text(getLangText("Игнорировать", "Ignore")) }
+                }
+            )
+        }
     }
 }
 

@@ -17,6 +17,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.scale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -84,6 +85,22 @@ fun HomeScreen(
             )
         },
         floatingActionButton = {
+            var scale by remember { mutableStateOf(1f) }
+            val animatedScale by androidx.compose.animation.core.animateFloatAsState(
+                targetValue = scale,
+                animationSpec = androidx.compose.animation.core.spring(dampingRatio = 0.5f, stiffness = 300f)
+            )
+            LaunchedEffect(projects.isEmpty()) {
+                if (projects.isEmpty()) {
+                    while(true) {
+                        kotlinx.coroutines.delay(2000)
+                        scale = 1.2f
+                        kotlinx.coroutines.delay(100)
+                        scale = 1f
+                    }
+                }
+            }
+
             Column(horizontalAlignment = Alignment.End, verticalArrangement = Arrangement.spacedBy(16.dp)) {
                 if (isGeminiAvailable) {
                     ExtendedFloatingActionButton(
@@ -91,11 +108,12 @@ fun HomeScreen(
                         containerColor = MaterialTheme.colorScheme.secondaryContainer,
                         contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
                         icon = { Icon(Icons.Default.AutoFixHigh, contentDescription = "Generate with AI") },
-                        text = { Text("AI Генерация") }
+                        text = { Text(getLangText("AI Генерация", "AI Generation")) }
                     )
                 }
                 FloatingActionButton(
                     onClick = { showCreateDialog = true },
+                    modifier = Modifier.scale(animatedScale),
                     containerColor = MaterialTheme.colorScheme.primary,
                     contentColor = MaterialTheme.colorScheme.onPrimary
                 ) {
@@ -115,8 +133,8 @@ fun HomeScreen(
                         tint = MaterialTheme.colorScheme.secondary
                     )
                     Spacer(modifier = Modifier.height(16.dp))
-                    Text("No projects yet", style = MaterialTheme.typography.titleMedium)
-                    Text("Tap + to create a new ExtraGram plugin", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text(getLangText("Пока нет проектов", "No projects yet"), style = MaterialTheme.typography.titleMedium)
+                    Text(getLangText("Нажмите + чтобы создать плагин", "Tap + to create a new plugin"), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             }
         } else {
@@ -216,34 +234,34 @@ fun CreateProjectDialog(onDismiss: () -> Unit, onCreate: (String, String, String
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("New Plugin Project") },
+        title = { Text(getLangText("Новый плагин", "New Plugin Project")) },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 OutlinedTextField(
                     value = name,
                     onValueChange = { name = it },
-                    label = { Text("Project Name") },
+                    label = { Text(getLangText("Название проекта", "Project Name")) },
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth()
                 )
                 OutlinedTextField(
                     value = author,
                     onValueChange = { author = it },
-                    label = { Text("Author") },
+                    label = { Text(getLangText("Автор", "Author")) },
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth()
                 )
                 OutlinedTextField(
                     value = description,
                     onValueChange = { description = it },
-                    label = { Text("Description (Optional)") },
+                    label = { Text(getLangText("Описание (Необязательно)", "Description (Optional)")) },
                     maxLines = 3,
                     modifier = Modifier.fillMaxWidth()
                 )
                 OutlinedTextField(
                     value = avatar,
                     onValueChange = { avatar = it },
-                    label = { Text("Avatar URL (Optional)") },
+                    label = { Text(getLangText("URL аватарки (Необязательно)", "Avatar URL (Optional)")) },
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth()
                 )
@@ -254,12 +272,12 @@ fun CreateProjectDialog(onDismiss: () -> Unit, onCreate: (String, String, String
                 onClick = { onCreate(name, author, description, avatar.takeIf { it.isNotBlank() }) },
                 enabled = name.isNotBlank() && author.isNotBlank()
             ) {
-                Text("Create")
+                Text(getLangText("Создать", "Create"))
             }
         },
         dismissButton = {
             TextButton(onClick = onDismiss) {
-                Text("Cancel")
+                Text(getLangText("Отмена", "Cancel"))
             }
         }
     )
@@ -277,7 +295,7 @@ fun AiGenerateDialog(geminiKey: String, onDismiss: () -> Unit, onGenerate: (Stri
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Icon(Icons.Default.AutoFixHigh, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
                 Spacer(modifier = Modifier.width(8.dp))
-                Text("Создать через ИИ")
+                Text(getLangText("Создать через ИИ", "Create via AI"))
             }
         },
         text = {
@@ -288,22 +306,22 @@ fun AiGenerateDialog(geminiKey: String, onDismiss: () -> Unit, onGenerate: (Stri
                     verticalArrangement = Arrangement.spacedBy(16.dp)
                 ) {
                     CircularProgressIndicator()
-                    Text("Генерация плагина...")
+                    Text(getLangText("Генерация плагина...", "Generating plugin..."))
                 }
             } else {
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Text("Опишите, что должен делать плагин, и ИИ напишет его код для вас.", style = MaterialTheme.typography.bodySmall)
+                    Text(getLangText("Опишите, что должен делать плагин, и ИИ напишет его код для вас.", "Describe what the plugin should do, and the AI will write its code for you."), style = MaterialTheme.typography.bodySmall)
                     OutlinedTextField(
                         value = prompt,
                         onValueChange = { prompt = it },
-                        label = { Text("Описание плагина") },
+                        label = { Text(getLangText("Описание плагина", "Plugin Description")) },
                         maxLines = 5,
                         modifier = Modifier.fillMaxWidth().height(120.dp)
                     )
                     OutlinedTextField(
                         value = author,
                         onValueChange = { author = it },
-                        label = { Text("Автор") },
+                        label = { Text(getLangText("Автор", "Author")) },
                         singleLine = true,
                         modifier = Modifier.fillMaxWidth()
                     )
@@ -319,14 +337,14 @@ fun AiGenerateDialog(geminiKey: String, onDismiss: () -> Unit, onGenerate: (Stri
                     },
                     enabled = prompt.isNotBlank() && author.isNotBlank()
                 ) {
-                    Text("Сгенерировать")
+                    Text(getLangText("Сгенерировать", "Generate"))
                 }
             }
         },
         dismissButton = {
             if (!isLoading) {
                 TextButton(onClick = onDismiss) {
-                    Text("Отмена")
+                    Text(getLangText("Отмена", "Cancel"))
                 }
             }
         }
@@ -338,17 +356,17 @@ fun SettingsDialog(onDismiss: () -> Unit) {
     val context = androidx.compose.ui.platform.LocalContext.current
     val sharedPrefs = remember { context.getSharedPreferences("settings", android.content.Context.MODE_PRIVATE) }
     var geminiKey by remember { mutableStateOf(sharedPrefs.getString("gemini_key", "") ?: "") }
-    var selectedLanguage by remember { mutableStateOf(sharedPrefs.getString("language", "ru") ?: "ru") }
+    var selectedLanguage by remember { mutableStateOf(LanguageManager.currentLanguage.value) }
     
     val uriHandler = androidx.compose.ui.platform.LocalUriHandler.current
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Настройки") },
+        title = { Text(getLangText("Настройки", "Settings")) },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
                 // Language Selection
-                Text("Язык / Language", style = MaterialTheme.typography.titleSmall)
+                Text(getLangText("Язык / Language", "Язык / Language"), style = MaterialTheme.typography.titleSmall)
                 Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         RadioButton(selected = selectedLanguage == "ru", onClick = { selectedLanguage = "ru" })
@@ -363,28 +381,30 @@ fun SettingsDialog(onDismiss: () -> Unit) {
                 Divider()
 
                 // AI Setup
-                Text("Настройка AI API (Gemini)", style = MaterialTheme.typography.titleSmall)
+                Text(getLangText("Настройка AI API (Gemini)", "AI API Setup (Gemini)"), style = MaterialTheme.typography.titleSmall)
+                Text(getLangText("Вы можете указать до 10 ключей через запятую или с новой строки. Если один не сработает, будет использован следующий.", "You can provide up to 10 keys separated by commas or newlines. If one fails, the next will be used."), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 OutlinedTextField(
                     value = geminiKey,
                     onValueChange = { geminiKey = it },
-                    label = { Text("API ключ") },
-                    singleLine = true,
+                    label = { Text(getLangText("API ключи", "API keys")) },
+                    minLines = 2,
+                    maxLines = 5,
                     modifier = Modifier.fillMaxWidth()
                 )
                 TextButton(onClick = { uriHandler.openUri("https://aistudio.google.com/app/apikey") }) {
-                    Text("Получить ключ (бесплатно)")
+                    Text(getLangText("Получить ключ (бесплатно)", "Get key (free)"))
                 }
                 
                 Divider()
 
                 // Project Info
-                Text("О проекте", style = MaterialTheme.typography.titleSmall)
-                Text("Автор: Shoker205", style = MaterialTheme.typography.bodyMedium)
+                Text(getLangText("О проекте", "About"), style = MaterialTheme.typography.titleSmall)
+                Text(getLangText("Автор: Shoker205", "Author: Shoker205"), style = MaterialTheme.typography.bodyMedium)
                 Row(
                     modifier = Modifier.clickable { uriHandler.openUri("https://t.me/extrapluggram") }.padding(vertical = 4.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Text("Канал в Telegram (Нажми)", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.SemiBold)
+                    Text(getLangText("Канал в Telegram (Нажми)", "Telegram Channel (Tap)"), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.SemiBold)
                 }
             }
         },
@@ -395,16 +415,18 @@ fun SettingsDialog(onDismiss: () -> Unit) {
                         .putString("gemini_key", geminiKey)
                         .putString("language", selectedLanguage)
                         .apply()
+                    LanguageManager.currentLanguage.value = selectedLanguage
                     onDismiss()
                 }
             ) {
-                Text("Сохранить")
+                Text(getLangText("Сохранить", "Save"))
             }
         },
         dismissButton = {
             TextButton(onClick = onDismiss) {
-                Text("Отмена")
+                Text(getLangText("Отмена", "Cancel"))
             }
         }
     )
 }
+

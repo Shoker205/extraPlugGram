@@ -31,6 +31,8 @@ class MainActivity : ComponentActivity() {
     
     val database = AppDatabase.getDatabase(this)
     val repository = ProjectRepository(database.codeProjectDao())
+    val sharedPrefs = getSharedPreferences("settings", android.content.Context.MODE_PRIVATE)
+    com.example.ui.LanguageManager.currentLanguage.value = sharedPrefs.getString("language", "ru") ?: "ru"
 
     setContent {
       var isDarkTheme by remember { mutableStateOf(true) } // Default to dark theme for IDE feel

@@ -46,13 +46,24 @@ object GeminiHelper {
         
     private val service = retrofit.create(GeminiApiService::class.java)
 
-    suspend fun complete(apiKey: String, prompt: String): String {
-        val req = GenerateContentRequest(listOf(Content(listOf(Part(prompt)))))
-        return try {
-            val res = service.generateContent(apiKey, req)
-            res.candidates.firstOrNull()?.content?.parts?.firstOrNull()?.text ?: "No response from AI."
-        } catch(e: Exception) {
-            "Error: ${e.message}"
+    suspend fun complete(apiKeysStr: String, prompt: String): String {
+        val apiKeys = apiKeysStr.split(Regex("[,\n\\s]+")).filter { it.isNotBlank() }.take(10)
+        if (apiKeys.isEmpty()) {
+            return "Error: No API keys provided."
         }
+        val req = GenerateContentRequest(listOf(Content(listOf(Part(prompt)))))
+        var lastError = "Unknown error"
+        
+        for (apiKey in apiKeys) {
+            try {
+                val res = service.generateContent(apiKey, req)
+                val text = res.candidates.firstOrNull()?.content?.parts?.firstOrNull()?.text
+                if (text != null) return text
+            } catch(e: Exception) {
+                lastError = e.message ?: "Unknown error"
+                continue
+            }
+        }
+        return "Error: $lastError (Tried ${apiKeys.size} keys)"
     }
 }
