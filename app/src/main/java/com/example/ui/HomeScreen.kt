@@ -88,39 +88,41 @@ fun HomeScreen(
             )
         },
         floatingActionButton = {
-            var scale by remember { mutableStateOf(1f) }
-            val animatedScale by androidx.compose.animation.core.animateFloatAsState(
-                targetValue = scale,
-                animationSpec = androidx.compose.animation.core.spring(dampingRatio = 0.5f, stiffness = 300f)
-            )
-            LaunchedEffect(projects.isEmpty()) {
-                if (projects.isEmpty()) {
-                    while(true) {
-                        kotlinx.coroutines.delay(2000)
-                        scale = 1.2f
-                        kotlinx.coroutines.delay(100)
-                        scale = 1f
+            if (selectedTabIndex == 0) {
+                var scale by remember { mutableStateOf(1f) }
+                val animatedScale by androidx.compose.animation.core.animateFloatAsState(
+                    targetValue = scale,
+                    animationSpec = androidx.compose.animation.core.spring(dampingRatio = 0.5f, stiffness = 300f)
+                )
+                LaunchedEffect(projects.isEmpty()) {
+                    if (projects.isEmpty()) {
+                        while(true) {
+                            kotlinx.coroutines.delay(2000)
+                            scale = 1.2f
+                            kotlinx.coroutines.delay(100)
+                            scale = 1f
+                        }
                     }
                 }
-            }
 
-            Column(horizontalAlignment = Alignment.End, verticalArrangement = Arrangement.spacedBy(16.dp)) {
-                if (isGeminiAvailable) {
-                    ExtendedFloatingActionButton(
-                        onClick = { showAiGenerateDialog = true },
-                        containerColor = MaterialTheme.colorScheme.secondaryContainer,
-                        contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
-                        icon = { Icon(Icons.Default.AutoFixHigh, contentDescription = "Generate with AI") },
-                        text = { Text(getLangText("AI Генерация", "AI Generation")) }
-                    )
-                }
-                FloatingActionButton(
-                    onClick = { showCreateDialog = true },
-                    modifier = Modifier.scale(animatedScale),
-                    containerColor = MaterialTheme.colorScheme.primary,
-                    contentColor = MaterialTheme.colorScheme.onPrimary
-                ) {
-                    Icon(Icons.Default.Add, contentDescription = "New Project")
+                Column(horizontalAlignment = Alignment.End, verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                    if (isGeminiAvailable) {
+                        ExtendedFloatingActionButton(
+                            onClick = { showAiGenerateDialog = true },
+                            containerColor = MaterialTheme.colorScheme.secondaryContainer,
+                            contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
+                            icon = { Icon(Icons.Default.AutoFixHigh, contentDescription = "Generate with AI") },
+                            text = { Text(getLangText("AI Генерация", "AI Generation")) }
+                        )
+                    }
+                    FloatingActionButton(
+                        onClick = { showCreateDialog = true },
+                        modifier = Modifier.scale(animatedScale),
+                        containerColor = MaterialTheme.colorScheme.primary,
+                        contentColor = MaterialTheme.colorScheme.onPrimary
+                    ) {
+                        Icon(Icons.Default.Add, contentDescription = "New Project")
+                    }
                 }
             }
         },

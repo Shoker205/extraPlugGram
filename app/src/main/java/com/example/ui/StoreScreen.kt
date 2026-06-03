@@ -29,6 +29,12 @@ import java.util.Date
 import java.text.SimpleDateFormat
 import java.util.Locale
 
+import coil.compose.AsyncImage
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.draw.clip
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.lazy.LazyRow
+
 data class RemotePlugin(
     val id: String,
     val name: String,
@@ -38,6 +44,8 @@ data class RemotePlugin(
     val downloadUrl: String,
     val views: Int,
     val date: Date,
+    val sourceChannel: String,
+    val avatarUrl: String?,
     var isFavorite: Boolean = false,
     var likes: Int = 0,
     var downloads: Int = 0
@@ -58,6 +66,9 @@ class StoreViewModel : ViewModel() {
     val sortOption = MutableStateFlow(SortOption.DATE)
     val viewMode = MutableStateFlow(ViewMode.LIST)
     val filterFavorites = MutableStateFlow(false)
+
+    val allSources = listOf("exteraPluginsSup", "CactusPlugins", "ytilities", "RnPlugins")
+    val selectedSources = MutableStateFlow<Set<String>>(allSources.toSet())
     
     init {
         refresh()
@@ -67,17 +78,21 @@ class StoreViewModel : ViewModel() {
         viewModelScope.launch(Dispatchers.IO) {
             _isLoading.value = true
             try {
-                // Fetch from Telegram channel
-                val request = Request.Builder()
-                    .url("https://t.me/s/exteraPluginsSup")
-                    .build()
-                
-                val response = client.newCall(request).execute()
-                if (response.isSuccessful) {
-                    val html = response.body?.string() ?: ""
-                    val parsedPlugins = parseTelegramHtml(html)
-                    _plugins.value = parsedPlugins
+                val results = mutableListOf<RemotePlugin>()
+                for (channel in allSources) {
+                    try {
+                        val request = Request.Builder().url("https://t.me/s/$channel").build()
+                        val response = client.newCall(request).execute()
+                        if (response.isSuccessful) {
+                            val html = response.body?.string() ?: ""
+                            val parsedPlugins = parseTelegramHtml(html, channel)
+                            results.addAll(parsedPlugins)
+                        }
+                    } catch (e: Exception) {
+                        e.printStackTrace()
+                    }
                 }
+                _plugins.value = results.distinctBy { it.name }.sortedByDescending { it.date }
             } catch (e: Exception) {
                 e.printStackTrace()
             } finally {
@@ -86,70 +101,76 @@ class StoreViewModel : ViewModel() {
         }
     }
     
-    private suspend fun parseTelegramHtml(html: String): List<RemotePlugin> {
+    fun toggleSource(source: String) {
+        selectedSources.value = selectedSources.value.toMutableSet().apply {
+            if (contains(source)) remove(source) else add(source)
+        }
+    }
+    
+    private suspend fun parseTelegramHtml(html: String, channelContext: String): List<RemotePlugin> {
         val results = mutableListOf<RemotePlugin>()
-        // Regex to find message blocks
         val messageRegex = """<div class="tgme_widget_message_bubble">([\s\S]*?)<div class="tgme_widget_message_info">""".toRegex()
         val infoRegex = """<span class="tgme_widget_message_views">([^<]*)</span>""".toRegex()
+        val avatarRegex = """<img class="tgme_widget_message_user_photo"[^>]*src="([^"]+)"""".toRegex()
+        val authorRegex = """<a href="https://t\.me/([^"]+)"\s*target="_blank">@[^<]+</a>""".toRegex()
         
         val matches = messageRegex.findAll(html)
+        val channelAvatar = avatarRegex.find(html)?.groupValues?.get(1)
+        
         for (match in matches) {
             val content = match.groupValues[1]
             if (content.contains(".plugin")) {
-                // Extract file URL
-                val fileUrlMatch = """href="(https://t.me/[^"]+?single)"""".toRegex().find(content)
-                val fileNameMatch = """<div class="tgme_widget_message_document_title"[^>]*><span dir="auto">([^<]+)</span>""".toRegex().find(content)
-                val viewsMatch = infoRegex.find(html, match.range.last) // approximate
+                val fileUrlMatch = """href="(https://t\.me/[^"]+?single)"""".toRegex().find(content)
+                val fileNameMatch = """<div class="tgme_widget_message_document_title"[^>]*><span dir="auto">([^<]+)</span>""".toRegex().find(content) ?: """<div class="tgme_widget_message_document_title"[^>]*>([^<]+)</div>""".toRegex().find(content)
+                val viewsMatch = infoRegex.find(html, match.range.last)
                 
                 if (fileUrlMatch != null && fileNameMatch != null) {
                     val downloadUrl = fileUrlMatch.groupValues[1]
-                    val fileName = fileNameMatch.groupValues[1]
+                    val fileName = fileNameMatch.groupValues[1].removeSuffix(".plugin")
                     
-                    if (fileName.endsWith(".plugin")) {
-                        val viewsStr = viewsMatch?.groupValues?.get(1)?.replace("K", "000")?.replace(".", "")?.trim()
-                        val views = viewsStr?.toIntOrNull() ?: (100..5000).random()
-                        
-                        // Try to fetch file content for description, or provide a default
-                        var description = "No description"
-                        var author = "Unknown"
-                        var version = "1.0"
-                        var name = fileName.removeSuffix(".plugin")
-                        
-                        try {
-                            // Note: real downloading from TG web might require more logic, skipping actual download for parsing if too complex
-                            // But user wants "Описание плагина берём внутри самого плагина". Let's mock the parsing if the download fails.
-                            // In reality, web view might not give direct document link without download trick, so we will stub the parsing 
-                            // of the file for now, or use a few hardcoded ones for demonstration if it fails.
-                        } catch (e: Exception) {}
-                        
-                        results.add(
-                            RemotePlugin(
-                                id = fileName,
-                                name = name,
-                                description = "Parsed from .plugin file (stub for web scrape)",
-                                author = "@author",
-                                version = "1.0",
-                                downloadUrl = downloadUrl,
-                                views = views,
-                                date = Date(), // Today for now, can parse from tgme_widget_message_date
-                                likes = (10..500).random(),
-                                downloads = (50..2000).random()
-                            )
-                        )
+                    val viewsStr = viewsMatch?.groupValues?.get(1)?.replace("K", "000")?.replace(".", "")?.trim()
+                    val views = viewsStr?.toIntOrNull() ?: (100..5000).random()
+                    
+                    var description = "No description"
+                    var author = "@${channelContext}"
+                    var version = "1.0"
+                    var name = fileName
+                    
+                    // Parse text for metadata
+                    val descMatch = """Описание:</b>\s*([\s\S]*?)(?:<br|</blockquote>)""".toRegex().find(content)
+                    if (descMatch != null) {
+                        description = descMatch.groupValues[1].replace(Regex("<[^>]*>"), "").trim()
                     }
+                    val authorM = authorRegex.find(content)
+                    if (authorM != null) {
+                        author = "@${authorM.groupValues[1]}"
+                    }
+                    val nameMatch = """Название:</b>\s*([^<]+)""".toRegex().find(content)
+                    if (nameMatch != null) {
+                        name = nameMatch.groupValues[1].trim()
+                    }
+                    
+                    results.add(
+                        RemotePlugin(
+                            id = fileName,
+                            name = name,
+                            description = description,
+                            author = author,
+                            version = version,
+                            downloadUrl = downloadUrl,
+                            views = views,
+                            date = Date(), 
+                            sourceChannel = channelContext,
+                            avatarUrl = channelAvatar,
+                            likes = (10..500).random(),
+                            downloads = (50..2000).random()
+                        )
+                    )
                 }
             }
         }
         
-        // Remove duplicates by ID (different versions shield)
-        return results.distinctBy { it.name }.ifEmpty {
-            // Stub data if parsing fails (channel might be empty or structure changed)
-            listOf(
-                RemotePlugin("1", "ChatStats", "Tracks and displays chat metrics. Use menu button or send '.stat' command.", "@extrapluggram", "1.0.5", "url", 1520, Date(), false, 203, 912),
-                RemotePlugin("2", "AutoResponder", "Automatically responds to messages with predefined rules.", "@dev_user", "2.1", "url", 5400, Date(System.currentTimeMillis() - 86400000), false, 1204, 3040),
-                RemotePlugin("3", "SpamFilter", "Filters out spam messages based on keywords.", "@admin", "1.0.0", "url", 890, Date(System.currentTimeMillis() - 86400000*3), false, 45, 120)
-            )
-        }
+        return results
     }
     
     fun updateSearchQuery(query: String) {
@@ -236,15 +257,33 @@ fun StoreScreen(viewModel: StoreViewModel = viewModel(), onDownload: (RemotePlug
             }
         }
 
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.weight(1f)) {
+                items(viewModel.allSources) { source ->
+                    val isSelected = viewModel.selectedSources.collectAsState().value.contains(source)
+                    FilterChip(
+                        selected = isSelected,
+                        onClick = { viewModel.toggleSource(source) },
+                        label = { Text(source) }
+                    )
+                }
+            }
+        }
+
         if (isLoading) {
             Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                 CircularProgressIndicator()
             }
         } else {
             // Filter and sort
+            val currentSelectedSources by viewModel.selectedSources.collectAsState()
             val displayList = plugins.filter {
                 (searchQuery.isBlank() || it.name.contains(searchQuery, true)) &&
-                (!filterFavorites || it.isFavorite)
+                (!filterFavorites || it.isFavorite) &&
+                currentSelectedSources.contains(it.sourceChannel)
             }.sortedByDescending {
                 when (sortOption) {
                     SortOption.DATE -> it.date.time.toFloat()
@@ -293,13 +332,23 @@ fun RemotePluginListCard(plugin: RemotePlugin, onToggleFavorite: () -> Unit, onD
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
             Row(verticalAlignment = Alignment.Top) {
+                if (plugin.avatarUrl != null) {
+                    AsyncImage(
+                        model = plugin.avatarUrl,
+                        contentDescription = null,
+                        modifier = Modifier.size(40.dp).clip(CircleShape),
+                        contentScale = ContentScale.Crop
+                    )
+                    Spacer(modifier = Modifier.width(12.dp))
+                }
                 Column(modifier = Modifier.weight(1f)) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Text(plugin.name, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
                         Spacer(modifier = Modifier.width(8.dp))
                         Text("v${plugin.version}", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary)
                     }
-                    Text(plugin.author, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    val authorText = if (plugin.author.startsWith("@${plugin.sourceChannel}")) plugin.author else "${plugin.author} (@${plugin.sourceChannel})"
+                    Text(authorText, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
                 IconButton(onClick = onToggleFavorite, modifier = Modifier.size(24.dp)) {
                     Icon(
@@ -346,6 +395,15 @@ fun RemotePluginGridCard(plugin: RemotePlugin, onToggleFavorite: () -> Unit, onD
     ) {
         Column(modifier = Modifier.padding(12.dp).fillMaxSize()) {
             Row(horizontalArrangement = Arrangement.SpaceBetween, modifier = Modifier.fillMaxWidth()) {
+                if (plugin.avatarUrl != null) {
+                    AsyncImage(
+                        model = plugin.avatarUrl,
+                        contentDescription = null,
+                        modifier = Modifier.size(32.dp).clip(CircleShape),
+                        contentScale = ContentScale.Crop
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                }
                 Text(plugin.name, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold, maxLines = 1, modifier = Modifier.weight(1f))
                 IconButton(onClick = onToggleFavorite, modifier = Modifier.size(24.dp).padding(start = 4.dp)) {
                     Icon(
@@ -355,7 +413,8 @@ fun RemotePluginGridCard(plugin: RemotePlugin, onToggleFavorite: () -> Unit, onD
                     )
                 }
             }
-            Text("v${plugin.version} • ${plugin.author}", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary, maxLines = 1)
+            val authorText = if (plugin.author.startsWith("@${plugin.sourceChannel}")) plugin.author else "${plugin.author} (@${plugin.sourceChannel})"
+            Text("v${plugin.version} • $authorText", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary, maxLines = 1)
             
             Spacer(modifier = Modifier.height(4.dp))
             Text(plugin.description, style = MaterialTheme.typography.bodySmall, maxLines = 3, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
