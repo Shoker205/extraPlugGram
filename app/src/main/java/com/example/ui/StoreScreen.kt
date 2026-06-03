@@ -109,10 +109,9 @@ class StoreViewModel : ViewModel() {
     
     private suspend fun parseTelegramHtml(html: String, channelContext: String): List<RemotePlugin> {
         val results = mutableListOf<RemotePlugin>()
-        val messageRegex = """<div class="tgme_widget_message_bubble">([\s\S]*?)<div class="tgme_widget_message_info">""".toRegex()
+        val messageRegex = """<div class="tgme_widget_message_bubble[^>]*>([\s\S]*?)<div class="tgme_widget_message_info""".toRegex()
         val infoRegex = """<span class="tgme_widget_message_views">([^<]*)</span>""".toRegex()
         val avatarRegex = """<img class="tgme_widget_message_user_photo"[^>]*src="([^"]+)"""".toRegex()
-        val authorRegex = """<a href="https://t\.me/([^"]+)"\s*target="_blank">@[^<]+</a>""".toRegex()
         
         val matches = messageRegex.findAll(html)
         val channelAvatar = avatarRegex.find(html)?.groupValues?.get(1)
@@ -120,8 +119,8 @@ class StoreViewModel : ViewModel() {
         for (match in matches) {
             val content = match.groupValues[1]
             if (content.contains(".plugin")) {
-                val fileUrlMatch = """href="(https://t\.me/[^"]+?single)"""".toRegex().find(content)
-                val fileNameMatch = """<div class="tgme_widget_message_document_title"[^>]*><span dir="auto">([^<]+)</span>""".toRegex().find(content) ?: """<div class="tgme_widget_message_document_title"[^>]*>([^<]+)</div>""".toRegex().find(content)
+                val fileUrlMatch = """href="(https://t\.me/[^"]+)"""".toRegex().find(content)
+                val fileNameMatch = """<div class="tgme_widget_message_document_title[^>]*>([^<]+)</div>""".toRegex().find(content)
                 val viewsMatch = infoRegex.find(html, match.range.last)
                 
                 if (fileUrlMatch != null && fileNameMatch != null) {
@@ -139,9 +138,9 @@ class StoreViewModel : ViewModel() {
                     // Parse text for metadata
                     val descMatch = """Описание:</b>\s*([\s\S]*?)(?:<br|</blockquote>)""".toRegex().find(content)
                     if (descMatch != null) {
-                        description = descMatch.groupValues[1].replace(Regex("<[^>]*>"), "").trim()
+                        description = descMatch.groupValues[1].replace(Regex("<[^>]*>"), "").replace("&amp;", "&").trim()
                     }
-                    val authorM = authorRegex.find(content)
+                    val authorM = """<a href="https://t\.me/([^"]+)"\s*target="_blank">@[^<]+</a>""".toRegex().find(content)
                     if (authorM != null) {
                         author = "@${authorM.groupValues[1]}"
                     }
@@ -152,7 +151,7 @@ class StoreViewModel : ViewModel() {
                     
                     results.add(
                         RemotePlugin(
-                            id = fileName,
+                            id = fileNameMatch.groupValues[1],
                             name = name,
                             description = description,
                             author = author,
