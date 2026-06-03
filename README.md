@@ -1,21 +1,12 @@
-<div align="center">
-<img width="1200" height="475" alt="GHBanner" src="https://ai.google.dev/static/site-assets/images/share-ais-513315318.png" />
-</div>
+# extraPlugGram
 
-# Run and deploy your AI Studio app
+**extraPlugGram** — это удобное Android-приложение, предназначенное для легкого создания, редактирования и управления Python-плагинами.
 
-This contains everything you need to run your app locally.
+## Особенности
+- 💻 **Встроенный редактор кода**: Пишите и редактируйте код прямо с телефона. Редактор поддерживает нумерацию строк, подсветку синтаксиса и выявление базовых опечаток (например, `prnt` вместо `print`) с удобными подсказками.
+- ✨ **AI Ассистент (Gemini)**: Нужен плагин, но не хочется писать код с нуля? Просто опишите свою идею на естественном языке, и встроенный искусственный интеллект сгенерирует готовую структуру плагина за вас. AI также поможет проанализировать и улучшить уже существующий код.
+- ⚙️ **Простое управление плагинами**: Создавайте новые проекты, импортируйте сторонние плагины или экспортируйте свои наработки в готовом виде всего в пару кликов.
+- 🌐 **Мультиязычность**: Поддержка русского и английского языков прямо из коробки.
+- 🔑 **Отказоустойчивость API**: Возможность добавления до 10 API-ключей Gemini. При исчерпании лимитов на одном ключе, приложение автоматически переключается на следующий, не прерывая вашу работу.
 
-View your app in AI Studio: https://ai.studio/apps/c45455ae-9695-4034-928b-6a0d34f58c77
-
-## Run Locally
-
-**Prerequisites:**  [Android Studio](https://developer.android.com/studio)
-
-
-1. Open Android Studio
-2. Select **Open** and choose the directory containing this project
-3. Allow Android Studio to fix any incompatibilities as it imports the project.
-4. Create a file named `.env` in the project directory and set `GEMINI_API_KEY` in that file to your Gemini API key (see `.env.example` for an example)
-5. Remove this line from the app's `build.gradle.kts` file: `signingConfig = signingConfigs.getByName("debugConfig")`
-6. Run the app on an emulator or physical device
+Идеальный инструмент для разработчиков, желающих быстро тестировать и писать плагины в походных условиях!
