@@ -175,19 +175,34 @@ fun HomeScreen(
                     }
                 }
             } else {
-                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        Icon(
-                            Icons.Default.Search,
-                            contentDescription = "Search Plugins",
-                            modifier = Modifier.size(64.dp),
-                            tint = MaterialTheme.colorScheme.secondary
-                        )
-                        Spacer(modifier = Modifier.height(16.dp))
-                        Text(getLangText("Сторонние плагины", "Third-party plugins"), style = MaterialTheme.typography.titleMedium)
-                        Text(getLangText("Здесь скоро появятся плагины для загрузки", "Downloadable plugins will appear here soon"), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                val downloadedText = getLangText("Плагин Скачан!", "Plugin Downloaded!")
+                StoreScreen(onDownload = { remotePlugin ->
+                    val mockCode = """
+from typing import Any, Dict, List
+from base_plugin import BasePlugin, AppEvent, MenuItemData, MenuItemType, HookResult, HookStrategy
+
+__id__ = "${remotePlugin.name.lowercase().replace(" ", "_")}"
+__name__ = "${remotePlugin.name}"
+__version__ = "${remotePlugin.version}"
+__description__ = "${remotePlugin.description}"
+__author__ = "${remotePlugin.author}"
+
+class ${remotePlugin.name.replace(" ", "")}Plugin(BasePlugin):
+    def on_plugin_load(self):
+        self.log(f"Plugin {self.get_plugin_name()} loaded.")
+        
+    def on_plugin_unload(self):
+        self.log(f"Plugin {self.get_plugin_name()} unloaded.")
+""".trimIndent()
+                    viewModel.importProject(
+                        name = remotePlugin.name,
+                        author = remotePlugin.author,
+                        description = remotePlugin.description,
+                        pluginCode = mockCode
+                    ) { 
+                        android.widget.Toast.makeText(context, downloadedText, android.widget.Toast.LENGTH_SHORT).show()
                     }
-                }
+                })
             }
         }
     }
