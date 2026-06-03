@@ -392,7 +392,10 @@ fun AiActionDialog(geminiKey: String, onDismiss: () -> Unit, onAction: (String, 
                         value = aiPrompt,
                         onValueChange = { aiPrompt = it },
                         label = { Text(getLangText("Отредактируй плагин...", "Edit the plugin...")) },
-                        modifier = Modifier.fillMaxWidth()
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .weight(1f, fill = false)
+                            .heightIn(min = 100.dp, max = 250.dp)
                     )
                     Row(
                         modifier = Modifier.fillMaxWidth(),

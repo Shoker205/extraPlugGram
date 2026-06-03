@@ -93,6 +93,7 @@ class CodeGramViewModel(private val repository: ProjectRepository) : ViewModel()
                     - on_plugin_load(self) — метод, вызываемый при запуске/включении плагина. Здесь нужно регистрировать хуки и пункты меню.
                     - on_plugin_unload(self) — вызывается при отключении для очистки ресурсов.
                     - on_app_event(self, event_type: AppEvent) — перехват событий жизненного цикла приложения. Типы из AppEvent: START, STOP, PAUSE, RESUME.
+                    - ВНИМАНИЕ: КАТЕГОРИЧЕСКИ ЗАПРЕЩЕНО переопределять метод `__init__`! Плагин инициализируется загрузчиком, и аргументы `__init__` будут неверными, что вызовет TypeError. Всю начальную логику пиши ТОЛЬКО внутри `on_plugin_load`.
 
                     4. НАСТРОЙКИ (SETTINGS)
                     - Для создания UI настроек реализуй метод create_settings(self) -> List[Any].

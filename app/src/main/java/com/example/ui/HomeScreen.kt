@@ -11,6 +11,7 @@ import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.AutoFixHigh
 import androidx.compose.material.icons.filled.Code 
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Upload
 import androidx.compose.material3.*
@@ -65,6 +66,8 @@ fun HomeScreen(
             }
         }
     }
+
+    var selectedTabIndex by remember { mutableStateOf(0) }
 
     Scaffold(
         topBar = {
@@ -123,34 +126,67 @@ fun HomeScreen(
         },
         containerColor = MaterialTheme.colorScheme.background
     ) { padding ->
-        if (projects.isEmpty()) {
-            Box(modifier = Modifier.fillMaxSize().padding(padding), contentAlignment = Alignment.Center) {
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Icon(
-                        Icons.Default.Code,
-                        contentDescription = "Code",
-                        modifier = Modifier.size(64.dp),
-                        tint = MaterialTheme.colorScheme.secondary
-                    )
-                    Spacer(modifier = Modifier.height(16.dp))
-                    Text(getLangText("Пока нет проектов", "No projects yet"), style = MaterialTheme.typography.titleMedium)
-                    Text(getLangText("Нажмите + чтобы создать плагин", "Tap + to create a new plugin"), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                }
-            }
-        } else {
-            LazyColumn(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(padding),
-                contentPadding = PaddingValues(16.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp)
+        Column(modifier = Modifier.fillMaxSize().padding(padding)) {
+            TabRow(
+                selectedTabIndex = selectedTabIndex,
+                containerColor = MaterialTheme.colorScheme.background,
+                contentColor = MaterialTheme.colorScheme.primary
             ) {
-                items(projects, key = { it.id }) { project ->
-                    ProjectCard(
-                        project = project,
-                        onClick = { onNavigateToEditor(project.id) },
-                        onDelete = { viewModel.deleteProject(project.id) }
-                    )
+                Tab(
+                    selected = selectedTabIndex == 0,
+                    onClick = { selectedTabIndex = 0 },
+                    text = { Text(getLangText("Мои проекты", "My Projects")) }
+                )
+                Tab(
+                    selected = selectedTabIndex == 1,
+                    onClick = { selectedTabIndex = 1 },
+                    text = { Text(getLangText("Скачать", "Download")) }
+                )
+            }
+            
+            if (selectedTabIndex == 0) {
+                if (projects.isEmpty()) {
+                    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            Icon(
+                                Icons.Default.Code,
+                                contentDescription = "Code",
+                                modifier = Modifier.size(64.dp),
+                                tint = MaterialTheme.colorScheme.secondary
+                            )
+                            Spacer(modifier = Modifier.height(16.dp))
+                            Text(getLangText("Пока нет проектов", "No projects yet"), style = MaterialTheme.typography.titleMedium)
+                            Text(getLangText("Нажмите + чтобы создать плагин", "Tap + to create a new plugin"), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        }
+                    }
+                } else {
+                    LazyColumn(
+                        modifier = Modifier.fillMaxSize(),
+                        contentPadding = PaddingValues(16.dp),
+                        verticalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        items(projects, key = { it.id }) { project ->
+                            ProjectCard(
+                                project = project,
+                                onClick = { onNavigateToEditor(project.id) },
+                                onDelete = { viewModel.deleteProject(project.id) }
+                            )
+                        }
+                    }
+                }
+            } else {
+                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Icon(
+                            Icons.Default.Search,
+                            contentDescription = "Search Plugins",
+                            modifier = Modifier.size(64.dp),
+                            tint = MaterialTheme.colorScheme.secondary
+                        )
+                        Spacer(modifier = Modifier.height(16.dp))
+                        Text(getLangText("Сторонние плагины", "Third-party plugins"), style = MaterialTheme.typography.titleMedium)
+                        Text(getLangText("Здесь скоро появятся плагины для загрузки", "Downloadable plugins will appear here soon"), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
                 }
             }
         }
