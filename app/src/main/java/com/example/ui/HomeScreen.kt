@@ -177,9 +177,19 @@ fun HomeScreen(
                     }
                 }
             } else {
-                val downloadedText = getLangText("Плагин Скачан!", "Plugin Downloaded!")
-                StoreScreen(onDownload = { remotePlugin ->
-                    val mockCode = """
+                var isTelegramAuth by remember { mutableStateOf(sharedPrefs.getBoolean("telegram_auth", false)) }
+                if (!isTelegramAuth) {
+                    TelegramAuthScreen(
+                        onAuthSuccess = {
+                            sharedPrefs.edit().putBoolean("telegram_auth", true).apply()
+                            isTelegramAuth = true
+                        },
+                        onBack = { selectedTabIndex = 0 }
+                    )
+                } else {
+                    val downloadedText = getLangText("Плагин Скачан!", "Plugin Downloaded!")
+                    StoreScreen(onDownload = { remotePlugin ->
+                        val mockCode = """
 from typing import Any, Dict, List
 from base_plugin import BasePlugin, AppEvent, MenuItemData, MenuItemType, HookResult, HookStrategy
 
@@ -196,15 +206,16 @@ class ${remotePlugin.name.replace(" ", "")}Plugin(BasePlugin):
     def on_plugin_unload(self):
         self.log(f"Plugin {self.get_plugin_name()} unloaded.")
 """.trimIndent()
-                    viewModel.importProject(
-                        name = remotePlugin.name,
-                        author = remotePlugin.author,
-                        description = remotePlugin.description,
-                        pluginCode = mockCode
-                    ) { 
-                        android.widget.Toast.makeText(context, downloadedText, android.widget.Toast.LENGTH_SHORT).show()
-                    }
-                })
+                        viewModel.importProject(
+                            name = remotePlugin.name,
+                            author = remotePlugin.author,
+                            description = remotePlugin.description,
+                            pluginCode = mockCode
+                        ) { 
+                            android.widget.Toast.makeText(context, downloadedText, android.widget.Toast.LENGTH_SHORT).show()
+                        }
+                    })
+                }
             }
         }
     }
