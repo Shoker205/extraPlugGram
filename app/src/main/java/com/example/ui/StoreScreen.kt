@@ -131,13 +131,19 @@ class StoreViewModel : ViewModel() {
                     val viewsStr = viewsMatch?.groupValues?.get(1)?.replace("K", "000")?.replace(".", "")?.trim()
                     val views = viewsStr?.toIntOrNull() ?: (100 + random.nextInt(4900))
                     
+                    // Parse reactions for likes
+                    val reactionRegex = """<span class="tgme_reaction">[\s\S]*?</i>\s*(\d+)\s*</span>""".toRegex()
+                    val likes = reactionRegex.findAll(content).mapNotNull { it.groupValues[1].toIntOrNull() }.sum()
+                    val finalLikes = if (likes > 0) likes else 1 + random.nextInt(10)
+                    val downloads = views / (5 + random.nextInt(15))
+                    
                     var description = "No description"
                     var author = "@${channelContext}"
                     var version = "1.0"
                     var name = fileName
                     
                     // Parse text for metadata
-                    val descMatch = """Описание:</b>\s*([\s\S]*?)(?:<br|</blockquote>)""".toRegex().find(content)
+                    val descMatch = """Описание:</b>\s*([\s\S]*?)(?:<br></br>|<br>|<a|$)""".toRegex().find(content)
                     if (descMatch != null) {
                         description = descMatch.groupValues[1].replace(Regex("<[^>]*>"), "").replace("&amp;", "&").trim()
                     }
@@ -162,8 +168,8 @@ class StoreViewModel : ViewModel() {
                             date = Date(), 
                             sourceChannel = channelContext,
                             avatarUrl = channelAvatar,
-                            likes = 10 + random.nextInt(490),
-                            downloads = 50 + random.nextInt(1950)
+                            likes = finalLikes,
+                            downloads = downloads
                         )
                     )
                 }
@@ -214,6 +220,11 @@ fun StoreScreen(viewModel: StoreViewModel = viewModel(), onDownload: (RemotePlug
                 singleLine = true
             )
             
+            val uriHandler = androidx.compose.ui.platform.LocalUriHandler.current
+            IconButton(onClick = { uriHandler.openUri("https://exterastore.app/plugins?sort=popular") }) {
+                Icon(Icons.Default.Language, contentDescription = "Browser")
+            }
+
             IconButton(onClick = viewModel::refresh) {
                 Icon(Icons.Default.Refresh, contentDescription = "Refresh")
             }

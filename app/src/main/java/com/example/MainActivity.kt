@@ -36,7 +36,24 @@ class MainActivity : ComponentActivity() {
 
     setContent {
       var isDarkTheme by remember { mutableStateOf(true) } // Default to dark theme for IDE feel
+      var importedPluginContent: String? by remember { mutableStateOf(null) }
+
+      val handleIntent = { incomingIntent: android.content.Intent ->
+          if (incomingIntent.action == android.content.Intent.ACTION_VIEW) {
+              incomingIntent.data?.let { uri ->
+                  try {
+                      val content = contentResolver.openInputStream(uri)?.bufferedReader()?.use { it.readText() }
+                      if (content != null) {
+                          importedPluginContent = content
+                      }
+                  } catch(e: Exception) { }
+                  incomingIntent.data = null // prevent re-importing
+              }
+          }
+      }
       
+      handleIntent(intent)
+
       MyApplicationTheme(darkTheme = isDarkTheme) {
         Surface(
             modifier = Modifier.fillMaxSize(),
@@ -47,6 +64,25 @@ class MainActivity : ComponentActivity() {
 
             NavHost(navController = navController, startDestination = "home") {
                 composable("home") {
+                    if (importedPluginContent != null) {
+                        LaunchedEffect(importedPluginContent) {
+                            var name = "Imported Plugin"
+                            var author = "@unknown"
+                            var desc = "No description"
+                            val nameMatch = "__name__\\s*=\\s*['\"]([^'\"]+)['\"]".toRegex().find(importedPluginContent!!)
+                            if (nameMatch != null) name = nameMatch.groupValues[1]
+                            val authorMatch = "__author__\\s*=\\s*['\"]([^'\"]+)['\"]".toRegex().find(importedPluginContent!!)
+                            if (authorMatch != null) author = authorMatch.groupValues[1]
+                            val descMatch = "__description__\\s*=\\s*['\"]([^'\"]+)['\"]".toRegex().find(importedPluginContent!!)
+                            if (descMatch != null) desc = descMatch.groupValues[1]
+                            
+                            mainViewModel.importProject(name, author, desc, importedPluginContent!!) {
+                                android.widget.Toast.makeText(this@MainActivity, "Плагин '$name' импортирован", android.widget.Toast.LENGTH_SHORT).show()
+                            }
+                            importedPluginContent = null
+                        }
+                    }
+
                     HomeScreen(
                         viewModel = mainViewModel,
                         onNavigateToEditor = { projectId ->

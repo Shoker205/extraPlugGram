@@ -37,9 +37,11 @@ fun HomeScreen(
 
     var showSettingsDialog by remember { mutableStateOf(false) }
     var showAiGenerateDialog by remember { mutableStateOf(false) }
+    var showTelegramAuth by remember { mutableStateOf(false) }
 
     val context = androidx.compose.ui.platform.LocalContext.current
     val sharedPrefs = remember { context.getSharedPreferences("settings", android.content.Context.MODE_PRIVATE) }
+    var isTelegramAuth by remember { mutableStateOf(sharedPrefs.getBoolean("telegram_auth", false)) }
     val geminiKey = sharedPrefs.getString("gemini_key", "") ?: ""
     val isGeminiAvailable = geminiKey.isNotEmpty()
 
@@ -177,28 +179,28 @@ fun HomeScreen(
                     }
                 }
             } else {
-                var isTelegramAuth by remember { mutableStateOf(sharedPrefs.getBoolean("telegram_auth", false)) }
-                if (!isTelegramAuth) {
-                    TelegramAuthScreen(
-                        onAuthSuccess = {
-                            sharedPrefs.edit().putBoolean("telegram_auth", true).apply()
-                            isTelegramAuth = true
-                        },
-                        onBack = { selectedTabIndex = 0 }
-                    )
-                } else {
-                    val fallbackErrorMsg = getLangText("Не удалось открыть ссылку", "Failed to open link")
-                    StoreScreen(onDownload = { remotePlugin ->
-                        try {
-                            val intent = android.content.Intent(android.content.Intent.ACTION_VIEW, android.net.Uri.parse(remotePlugin.downloadUrl))
-                            context.startActivity(intent)
-                        } catch (e: Exception) {
-                            android.widget.Toast.makeText(context, fallbackErrorMsg, android.widget.Toast.LENGTH_SHORT).show()
-                        }
-                    })
-                }
+                val fallbackErrorMsg = getLangText("Не удалось открыть ссылку", "Failed to open link")
+                StoreScreen(onDownload = { remotePlugin ->
+                    try {
+                        val intent = android.content.Intent(android.content.Intent.ACTION_VIEW, android.net.Uri.parse(remotePlugin.downloadUrl))
+                        context.startActivity(intent)
+                    } catch (e: Exception) {
+                        android.widget.Toast.makeText(context, fallbackErrorMsg, android.widget.Toast.LENGTH_SHORT).show()
+                    }
+                })
             }
         }
+    }
+
+    if (showTelegramAuth) {
+        TelegramAuthScreen(
+            onAuthSuccess = {
+                sharedPrefs.edit().putBoolean("telegram_auth", true).apply()
+                isTelegramAuth = true
+                showTelegramAuth = false
+            },
+            onBack = { showTelegramAuth = false }
+        )
     }
 
     if (showCreateDialog) {
@@ -232,7 +234,15 @@ fun HomeScreen(
     }
 
     if (showSettingsDialog) {
-        SettingsDialog(onDismiss = { showSettingsDialog = false })
+        SettingsDialog(
+            isTelegramAuth = isTelegramAuth,
+            onTelegramAuthClick = { showTelegramAuth = true },
+            onTelegramLogoutClick = {
+                sharedPrefs.edit().putBoolean("telegram_auth", false).apply()
+                isTelegramAuth = false
+            },
+            onDismiss = { showSettingsDialog = false }
+        )
     }
 }
 
@@ -397,7 +407,12 @@ fun AiGenerateDialog(geminiKey: String, onDismiss: () -> Unit, onGenerate: (Stri
 }
 
 @Composable
-fun SettingsDialog(onDismiss: () -> Unit) {
+fun SettingsDialog(
+    isTelegramAuth: Boolean,
+    onTelegramAuthClick: () -> Unit,
+    onTelegramLogoutClick: () -> Unit,
+    onDismiss: () -> Unit
+) {
     val context = androidx.compose.ui.platform.LocalContext.current
     val sharedPrefs = remember { context.getSharedPreferences("settings", android.content.Context.MODE_PRIVATE) }
     var geminiKey by remember { mutableStateOf(sharedPrefs.getString("gemini_key", "") ?: "") }
@@ -410,6 +425,24 @@ fun SettingsDialog(onDismiss: () -> Unit) {
         title = { Text(getLangText("Настройки", "Settings")) },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                // Telegram Login
+                Text(getLangText("Telegram Store", "Telegram Store"), style = MaterialTheme.typography.titleSmall)
+                Text(getLangText("Вход необходим для автоматической загрузки плагинов и оценки прямо из приложения.", "Login is required for automatic plugin downloads and rating directly from the app."), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                if (isTelegramAuth) {
+                    Button(onClick = onTelegramLogoutClick, colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)) {
+                        Text(getLangText("Выйти из аккаунта", "Logout"))
+                    }
+                } else {
+                    Button(onClick = {
+                        onDismiss()
+                        onTelegramAuthClick()
+                    }) {
+                        Text(getLangText("Войти в Telegram", "Login to Telegram"))
+                    }
+                }
+                
+                HorizontalDivider()
+                
                 // Language Selection
                 Text(getLangText("Язык / Language", "Язык / Language"), style = MaterialTheme.typography.titleSmall)
                 Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
