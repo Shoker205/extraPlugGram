@@ -77,13 +77,10 @@ class TelegramAuthViewModel : ViewModel() {
             _isLoading.value = true
             _error.value = null
             delay(1500) // Simulate TDLib network delay
-            if (code == "00000") {
+            if (code.length != 5) {
                 _error.value = "Invalid verification code"
-            } else if (code == "12345") {
-                _authState.value = AuthStep.AUTHENTICATED
             } else {
-                // Simulate 2FA required for all other codes
-                _authState.value = AuthStep.PASSWORD
+                _authState.value = AuthStep.AUTHENTICATED
             }
             _isLoading.value = false
         }

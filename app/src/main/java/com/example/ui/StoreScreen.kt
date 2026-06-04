@@ -127,8 +127,9 @@ class StoreViewModel : ViewModel() {
                     val downloadUrl = fileUrlMatch.groupValues[1]
                     val fileName = fileNameMatch.groupValues[1].removeSuffix(".plugin")
                     
+                    val random = java.util.Random((channelContext + fileName).hashCode().toLong())
                     val viewsStr = viewsMatch?.groupValues?.get(1)?.replace("K", "000")?.replace(".", "")?.trim()
-                    val views = viewsStr?.toIntOrNull() ?: (100..5000).random()
+                    val views = viewsStr?.toIntOrNull() ?: (100 + random.nextInt(4900))
                     
                     var description = "No description"
                     var author = "@${channelContext}"
@@ -161,8 +162,8 @@ class StoreViewModel : ViewModel() {
                             date = Date(), 
                             sourceChannel = channelContext,
                             avatarUrl = channelAvatar,
-                            likes = (10..500).random(),
-                            downloads = (50..2000).random()
+                            likes = 10 + random.nextInt(490),
+                            downloads = 50 + random.nextInt(1950)
                         )
                     )
                 }

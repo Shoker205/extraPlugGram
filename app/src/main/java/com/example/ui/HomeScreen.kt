@@ -187,32 +187,13 @@ fun HomeScreen(
                         onBack = { selectedTabIndex = 0 }
                     )
                 } else {
-                    val downloadedText = getLangText("Плагин Скачан!", "Plugin Downloaded!")
+                    val fallbackErrorMsg = getLangText("Не удалось открыть ссылку", "Failed to open link")
                     StoreScreen(onDownload = { remotePlugin ->
-                        val mockCode = """
-from typing import Any, Dict, List
-from base_plugin import BasePlugin, AppEvent, MenuItemData, MenuItemType, HookResult, HookStrategy
-
-__id__ = "${remotePlugin.name.lowercase().replace(" ", "_")}"
-__name__ = "${remotePlugin.name}"
-__version__ = "${remotePlugin.version}"
-__description__ = "${remotePlugin.description}"
-__author__ = "${remotePlugin.author}"
-
-class ${remotePlugin.name.replace(" ", "")}Plugin(BasePlugin):
-    def on_plugin_load(self):
-        self.log(f"Plugin {self.get_plugin_name()} loaded.")
-        
-    def on_plugin_unload(self):
-        self.log(f"Plugin {self.get_plugin_name()} unloaded.")
-""".trimIndent()
-                        viewModel.importProject(
-                            name = remotePlugin.name,
-                            author = remotePlugin.author,
-                            description = remotePlugin.description,
-                            pluginCode = mockCode
-                        ) { 
-                            android.widget.Toast.makeText(context, downloadedText, android.widget.Toast.LENGTH_SHORT).show()
+                        try {
+                            val intent = android.content.Intent(android.content.Intent.ACTION_VIEW, android.net.Uri.parse(remotePlugin.downloadUrl))
+                            context.startActivity(intent)
+                        } catch (e: Exception) {
+                            android.widget.Toast.makeText(context, fallbackErrorMsg, android.widget.Toast.LENGTH_SHORT).show()
                         }
                     })
                 }
@@ -442,7 +423,7 @@ fun SettingsDialog(onDismiss: () -> Unit) {
                     }
                 }
                 
-                Divider()
+                HorizontalDivider()
 
                 // AI Setup
                 Text(getLangText("Настройка AI API (Gemini)", "AI API Setup (Gemini)"), style = MaterialTheme.typography.titleSmall)
@@ -459,7 +440,7 @@ fun SettingsDialog(onDismiss: () -> Unit) {
                     Text(getLangText("Получить ключ (бесплатно)", "Get key (free)"))
                 }
                 
-                Divider()
+                HorizontalDivider()
 
                 // Project Info
                 Text(getLangText("О проекте", "About"), style = MaterialTheme.typography.titleSmall)
