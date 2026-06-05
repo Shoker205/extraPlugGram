@@ -70,11 +70,14 @@ class StoreViewModel : ViewModel() {
     val allSources = listOf("exteraPluginsSup", "CactusPlugins", "ytilities", "RnPlugins")
     val selectedSources = MutableStateFlow<Set<String>>(allSources.toSet())
     
+    private val channelCursors = mutableMapOf<String, String>()
+    
     init {
         refresh()
     }
     
     fun refresh() {
+        channelCursors.clear()
         viewModelScope.launch(Dispatchers.IO) {
             _isLoading.value = true
             try {
@@ -85,6 +88,50 @@ class StoreViewModel : ViewModel() {
                         val response = client.newCall(request).execute()
                         if (response.isSuccessful) {
                             val html = response.body?.string() ?: ""
+                            
+                            val beforeRegex = """data-before="(\d+)"""".toRegex()
+                            beforeRegex.find(html)?.let { 
+                                channelCursors[channel] = it.groupValues[1] 
+                            }
+                            
+                            val parsedPlugins = parseTelegramHtml(html, channel)
+                            results.addAll(parsedPlugins)
+                        }
+                    } catch (e: Exception) {
+                        e.printStackTrace()
+                    }
+                }
+                _plugins.value = results.distinctBy { it.name }.sortedByDescending { it.date }
+            } catch (e: Exception) {
+                e.printStackTrace()
+            } finally {
+                _isLoading.value = false
+            }
+        }
+    }
+    
+    fun loadMore() {
+        if (_isLoading.value) return
+        viewModelScope.launch(Dispatchers.IO) {
+            _isLoading.value = true
+            try {
+                val results = _plugins.value.toMutableList()
+                for (channel in selectedSources.value) { // only load more for selected channels
+                    val before = channelCursors[channel] ?: continue
+                    try {
+                        val request = Request.Builder().url("https://t.me/s/$channel?before=$before").build()
+                        val response = client.newCall(request).execute()
+                        if (response.isSuccessful) {
+                            val html = response.body?.string() ?: ""
+                            
+                            val beforeRegex = """data-before="(\d+)"""".toRegex()
+                            val nextBefore = beforeRegex.find(html)?.groupValues?.get(1)
+                            if (nextBefore != null) {
+                                channelCursors[channel] = nextBefore
+                            } else {
+                                channelCursors.remove(channel)
+                            }
+                            
                             val parsedPlugins = parseTelegramHtml(html, channel)
                             results.addAll(parsedPlugins)
                         }
@@ -122,6 +169,9 @@ class StoreViewModel : ViewModel() {
                 val fileUrlMatch = """href="(https://t\.me/[^"]+)"""".toRegex().find(content)
                 val fileNameMatch = """<div class="tgme_widget_message_document_title[^>]*>([^<]+)</div>""".toRegex().find(content)
                 val viewsMatch = infoRegex.find(html, match.range.last)
+                
+                val pluginAvatarMatch = """tgme_widget_message_photo_wrap[^>]*background-image:url\('([^']+)'\)""".toRegex().find(content)
+                val avatarUrl = pluginAvatarMatch?.groupValues?.get(1) ?: channelAvatar
                 
                 if (fileUrlMatch != null && fileNameMatch != null) {
                     val downloadUrl = fileUrlMatch.groupValues[1]
@@ -167,7 +217,7 @@ class StoreViewModel : ViewModel() {
                             views = views,
                             date = Date(), 
                             sourceChannel = channelContext,
-                            avatarUrl = channelAvatar,
+                            avatarUrl = avatarUrl,
                             likes = finalLikes,
                             downloads = downloads
                         )
@@ -316,6 +366,11 @@ fun StoreScreen(viewModel: StoreViewModel = viewModel(), onDownload: (RemotePlug
                         items(displayList, key = { it.id }) { plugin ->
                             RemotePluginListCard(plugin, onToggleFavorite = { viewModel.toggleFavorite(plugin.id) }, onDownload = { onDownload(plugin) })
                         }
+                        item {
+                            Button(onClick = viewModel::loadMore, modifier = Modifier.fillMaxWidth().padding(top = 8.dp)) {
+                                Text(getLangText("Загрузить ещё", "Load More"))
+                            }
+                        }
                     }
                 } else {
                     LazyVerticalGrid(
@@ -327,6 +382,11 @@ fun StoreScreen(viewModel: StoreViewModel = viewModel(), onDownload: (RemotePlug
                     ) {
                         items(displayList, key = { it.id }) { plugin ->
                             RemotePluginGridCard(plugin, onToggleFavorite = { viewModel.toggleFavorite(plugin.id) }, onDownload = { onDownload(plugin) })
+                        }
+                        item(span = { androidx.compose.foundation.lazy.grid.GridItemSpan(2) }) {
+                            Button(onClick = viewModel::loadMore, modifier = Modifier.fillMaxWidth().padding(top = 8.dp)) {
+                                Text(getLangText("Загрузить ещё", "Load More"))
+                            }
                         }
                     }
                 }
