@@ -37,11 +37,9 @@ fun HomeScreen(
 
     var showSettingsDialog by remember { mutableStateOf(false) }
     var showAiGenerateDialog by remember { mutableStateOf(false) }
-    var showTelegramAuth by remember { mutableStateOf(false) }
 
     val context = androidx.compose.ui.platform.LocalContext.current
     val sharedPrefs = remember { context.getSharedPreferences("settings", android.content.Context.MODE_PRIVATE) }
-    var isTelegramAuth by remember { mutableStateOf(sharedPrefs.getBoolean("telegram_auth", false)) }
     val geminiKey = sharedPrefs.getString("gemini_key", "") ?: ""
     val isGeminiAvailable = geminiKey.isNotEmpty()
 
@@ -69,8 +67,6 @@ fun HomeScreen(
         }
     }
 
-    var selectedTabIndex by remember { mutableStateOf(0) }
-
     Scaffold(
         topBar = {
             TopAppBar(
@@ -90,117 +86,75 @@ fun HomeScreen(
             )
         },
         floatingActionButton = {
-            if (selectedTabIndex == 0) {
-                var scale by remember { mutableStateOf(1f) }
-                val animatedScale by androidx.compose.animation.core.animateFloatAsState(
-                    targetValue = scale,
-                    animationSpec = androidx.compose.animation.core.spring(dampingRatio = 0.5f, stiffness = 300f)
-                )
-                LaunchedEffect(projects.isEmpty()) {
-                    if (projects.isEmpty()) {
-                        while(true) {
-                            kotlinx.coroutines.delay(2000)
-                            scale = 1.2f
-                            kotlinx.coroutines.delay(100)
-                            scale = 1f
-                        }
+            var scale by remember { mutableStateOf(1f) }
+            val animatedScale by androidx.compose.animation.core.animateFloatAsState(
+                targetValue = scale,
+                animationSpec = androidx.compose.animation.core.spring(dampingRatio = 0.5f, stiffness = 300f)
+            )
+            LaunchedEffect(projects.isEmpty()) {
+                if (projects.isEmpty()) {
+                    while(true) {
+                        kotlinx.coroutines.delay(2000)
+                        scale = 1.2f
+                        kotlinx.coroutines.delay(100)
+                        scale = 1f
                     }
                 }
+            }
 
-                Column(horizontalAlignment = Alignment.End, verticalArrangement = Arrangement.spacedBy(16.dp)) {
-                    if (isGeminiAvailable) {
-                        ExtendedFloatingActionButton(
-                            onClick = { showAiGenerateDialog = true },
-                            containerColor = MaterialTheme.colorScheme.secondaryContainer,
-                            contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
-                            icon = { Icon(Icons.Default.AutoFixHigh, contentDescription = "Generate with AI") },
-                            text = { Text(getLangText("AI Генерация", "AI Generation")) }
-                        )
-                    }
-                    FloatingActionButton(
-                        onClick = { showCreateDialog = true },
-                        modifier = Modifier.scale(animatedScale),
-                        containerColor = MaterialTheme.colorScheme.primary,
-                        contentColor = MaterialTheme.colorScheme.onPrimary
-                    ) {
-                        Icon(Icons.Default.Add, contentDescription = "New Project")
-                    }
+            Column(horizontalAlignment = Alignment.End, verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                if (isGeminiAvailable) {
+                    ExtendedFloatingActionButton(
+                        onClick = { showAiGenerateDialog = true },
+                        containerColor = MaterialTheme.colorScheme.secondaryContainer,
+                        contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
+                        icon = { Icon(Icons.Default.AutoFixHigh, contentDescription = "Generate with AI") },
+                        text = { Text(getLangText("AI Генерация", "AI Generation")) }
+                    )
+                }
+                FloatingActionButton(
+                    onClick = { showCreateDialog = true },
+                    modifier = Modifier.scale(animatedScale),
+                    containerColor = MaterialTheme.colorScheme.primary,
+                    contentColor = MaterialTheme.colorScheme.onPrimary
+                ) {
+                    Icon(Icons.Default.Add, contentDescription = "New Project")
                 }
             }
         },
         containerColor = MaterialTheme.colorScheme.background
     ) { padding ->
         Column(modifier = Modifier.fillMaxSize().padding(padding)) {
-            TabRow(
-                selectedTabIndex = selectedTabIndex,
-                containerColor = MaterialTheme.colorScheme.background,
-                contentColor = MaterialTheme.colorScheme.primary
-            ) {
-                Tab(
-                    selected = selectedTabIndex == 0,
-                    onClick = { selectedTabIndex = 0 },
-                    text = { Text(getLangText("Мои проекты", "My Projects")) }
-                )
-                Tab(
-                    selected = selectedTabIndex == 1,
-                    onClick = { selectedTabIndex = 1 },
-                    text = { Text(getLangText("Скачать", "Download")) }
-                )
-            }
-            
-            if (selectedTabIndex == 0) {
-                if (projects.isEmpty()) {
-                    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                            Icon(
-                                Icons.Default.Code,
-                                contentDescription = "Code",
-                                modifier = Modifier.size(64.dp),
-                                tint = MaterialTheme.colorScheme.secondary
-                            )
-                            Spacer(modifier = Modifier.height(16.dp))
-                            Text(getLangText("Пока нет проектов", "No projects yet"), style = MaterialTheme.typography.titleMedium)
-                            Text(getLangText("Нажмите + чтобы создать плагин", "Tap + to create a new plugin"), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                        }
-                    }
-                } else {
-                    LazyColumn(
-                        modifier = Modifier.fillMaxSize(),
-                        contentPadding = PaddingValues(16.dp),
-                        verticalArrangement = Arrangement.spacedBy(12.dp)
-                    ) {
-                        items(projects, key = { it.id }) { project ->
-                            ProjectCard(
-                                project = project,
-                                onClick = { onNavigateToEditor(project.id) },
-                                onDelete = { viewModel.deleteProject(project.id) }
-                            )
-                        }
+            if (projects.isEmpty()) {
+                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Icon(
+                            Icons.Default.Code,
+                            contentDescription = "Code",
+                            modifier = Modifier.size(64.dp),
+                            tint = MaterialTheme.colorScheme.secondary
+                        )
+                        Spacer(modifier = Modifier.height(16.dp))
+                        Text(getLangText("Пока нет проектов", "No projects yet"), style = MaterialTheme.typography.titleMedium)
+                        Text(getLangText("Нажмите + чтобы создать плагин", "Tap + to create a new plugin"), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
                 }
             } else {
-                val fallbackErrorMsg = getLangText("Не удалось открыть ссылку", "Failed to open link")
-                StoreScreen(onDownload = { remotePlugin ->
-                    try {
-                        val intent = android.content.Intent(android.content.Intent.ACTION_VIEW, android.net.Uri.parse(remotePlugin.downloadUrl))
-                        context.startActivity(intent)
-                    } catch (e: Exception) {
-                        android.widget.Toast.makeText(context, fallbackErrorMsg, android.widget.Toast.LENGTH_SHORT).show()
+                LazyColumn(
+                    modifier = Modifier.fillMaxSize(),
+                    contentPadding = PaddingValues(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    items(projects, key = { it.id }) { project ->
+                        ProjectCard(
+                            project = project,
+                            onClick = { onNavigateToEditor(project.id) },
+                            onDelete = { viewModel.deleteProject(project.id) }
+                        )
                     }
-                })
+                }
             }
         }
-    }
-
-    if (showTelegramAuth) {
-        TelegramAuthScreen(
-            onAuthSuccess = {
-                sharedPrefs.edit().putBoolean("telegram_auth", true).apply()
-                isTelegramAuth = true
-                showTelegramAuth = false
-            },
-            onBack = { showTelegramAuth = false }
-        )
     }
 
     if (showCreateDialog) {
@@ -235,12 +189,6 @@ fun HomeScreen(
 
     if (showSettingsDialog) {
         SettingsDialog(
-            isTelegramAuth = isTelegramAuth,
-            onTelegramAuthClick = { showTelegramAuth = true },
-            onTelegramLogoutClick = {
-                sharedPrefs.edit().putBoolean("telegram_auth", false).apply()
-                isTelegramAuth = false
-            },
             onDismiss = { showSettingsDialog = false }
         )
     }
@@ -408,9 +356,6 @@ fun AiGenerateDialog(geminiKey: String, onDismiss: () -> Unit, onGenerate: (Stri
 
 @Composable
 fun SettingsDialog(
-    isTelegramAuth: Boolean,
-    onTelegramAuthClick: () -> Unit,
-    onTelegramLogoutClick: () -> Unit,
     onDismiss: () -> Unit
 ) {
     val context = androidx.compose.ui.platform.LocalContext.current
@@ -425,24 +370,6 @@ fun SettingsDialog(
         title = { Text(getLangText("Настройки", "Settings")) },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
-                // Telegram Login
-                Text(getLangText("Telegram Store", "Telegram Store"), style = MaterialTheme.typography.titleSmall)
-                Text(getLangText("Вход необходим для автоматической загрузки плагинов и оценки прямо из приложения.", "Login is required for automatic plugin downloads and rating directly from the app."), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                if (isTelegramAuth) {
-                    Button(onClick = onTelegramLogoutClick, colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)) {
-                        Text(getLangText("Выйти из аккаунта", "Logout"))
-                    }
-                } else {
-                    Button(onClick = {
-                        onDismiss()
-                        onTelegramAuthClick()
-                    }) {
-                        Text(getLangText("Войти в Telegram", "Login to Telegram"))
-                    }
-                }
-                
-                HorizontalDivider()
-                
                 // Language Selection
                 Text(getLangText("Язык / Language", "Язык / Language"), style = MaterialTheme.typography.titleSmall)
                 Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
