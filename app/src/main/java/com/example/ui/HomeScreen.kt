@@ -404,13 +404,13 @@ fun SettingsDialog(
 
                 // Project Info
                 Text(getLangText("О проекте", "About"), style = MaterialTheme.typography.titleSmall)
-                Text(getLangText("Автор: Shoker205", "Author: Shoker205"), style = MaterialTheme.typography.bodyMedium)
-                Row(
-                    modifier = Modifier.clickable { uriHandler.openUri("https://t.me/extrapluggram") }.padding(vertical = 4.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Text(getLangText("Канал в Telegram (Нажми)", "Telegram Channel (Tap)"), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.SemiBold)
-                }
+                Text(
+                    getLangText("Автор: SlantTech", "Author: SlantTech"), 
+                    style = MaterialTheme.typography.bodyMedium, 
+                    color = MaterialTheme.colorScheme.primary, 
+                    fontWeight = FontWeight.SemiBold,
+                    modifier = Modifier.clickable { uriHandler.openUri("https://t.me/slant_tech") }.padding(vertical = 4.dp)
+                )
             }
         },
         confirmButton = {
