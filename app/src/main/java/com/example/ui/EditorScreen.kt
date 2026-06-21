@@ -241,7 +241,7 @@ from android_utils import log
 __name__ = "Ping Plugin"
 __description__ = "Отвечает Pong на команду .ping"
 __version__ = "1.0.0"
-__author__ = "@extrapluggram"
+__author__ = "@exteraPlugGram"
 
 class MyPlugin(BasePlugin):
     def on_plugin_load(self):
@@ -262,7 +262,7 @@ from android_utils import log
 __name__ = "Message Logger"
 __description__ = "Логирует все входящие сообщения в консоль"
 __version__ = "1.0.0"
-__author__ = "@extrapluggram"
+__author__ = "@exteraPlugGram"
 
 class MessageLoggerPlugin(BasePlugin):
     def on_plugin_load(self):
@@ -284,7 +284,7 @@ from android_utils import log
 __name__ = "Auto Responder"
 __description__ = "Автоответчик на личные сообщения"
 __version__ = "1.0.0"
-__author__ = "@extrapluggram"
+__author__ = "@exteraPlugGram"
 
 class AutoResponderPlugin(BasePlugin):
     def on_plugin_load(self):
@@ -309,7 +309,7 @@ from android_utils import log
 __name__ = "Theme Modifier"
 __description__ = "Пример изменения цветов темы"
 __version__ = "1.0.0"
-__author__ = "@extrapluggram"
+__author__ = "@exteraPlugGram"
 
 class ThemeModifierPlugin(BasePlugin):
     def on_plugin_load(self):
@@ -337,7 +337,7 @@ from android_utils import log, run_on_ui_thread
 __name__ = "New Plugin"
 __description__ = "Basic plugin structure"
 __version__ = "1.0.0"
-__author__ = "@extrapluggram"
+__author__ = "@exteraPlugGram"
 
 class Plugin(BasePlugin):
     def on_plugin_load(self):

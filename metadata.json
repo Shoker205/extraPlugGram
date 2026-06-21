@@ -1,5 +1,5 @@
 {
-  "name": "extraPlugGram",
+  "name": "exteraPlugGram",
   "description": "IDE for creating and testing ExtraGram/AyuGram plugins on mobile.",
   "requestFramePermissions": [],
   "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]

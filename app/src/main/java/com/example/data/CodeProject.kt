@@ -7,7 +7,7 @@ import androidx.room.PrimaryKey
 data class CodeProject(
     @PrimaryKey(autoGenerate = true) val id: Int = 0,
     val name: String,
-    val author: String = "@extrapluggram",
+    val author: String = "@exteraPlugGram",
     val description: String,
     val avatarUrl: String? = null,
     val pluginCode: String,

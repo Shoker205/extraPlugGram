@@ -53,7 +53,7 @@ fun HomeScreen(
                     val nameMatch = Regex("""__name__\s*=\s*['"](.*?)['"]""").find(content)
                     val name = nameMatch?.groupValues?.get(1) ?: "Импортирован"
                     val authorMatch = Regex("""__author__\s*=\s*['"](.*?)['"]""").find(content)
-                    val author = authorMatch?.groupValues?.get(1) ?: "@extrapluggram"
+                    val author = authorMatch?.groupValues?.get(1) ?: "@exteraPlugGram"
                     val descMatch = Regex("""__description__\s*=\s*['"](.*?)['"]""").find(content)
                     val desc = descMatch?.groupValues?.get(1) ?: ""
                     
@@ -70,7 +70,7 @@ fun HomeScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("extraPlugGram", fontWeight = FontWeight.Bold) },
+                title = { Text("exteraPlugGram", fontWeight = FontWeight.Bold) },
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = MaterialTheme.colorScheme.background,
                     titleContentColor = MaterialTheme.colorScheme.primary
@@ -231,7 +231,7 @@ fun ProjectCard(project: CodeProject, onClick: () -> Unit, onDelete: () -> Unit)
 @Composable
 fun CreateProjectDialog(onDismiss: () -> Unit, onCreate: (String, String, String, String?) -> Unit) {
     var name by remember { mutableStateOf("") }
-    var author by remember { mutableStateOf("@extrapluggram") }
+    var author by remember { mutableStateOf("@exteraPlugGram") }
     var description by remember { mutableStateOf("") }
     var avatar by remember { mutableStateOf("") }
 
@@ -289,7 +289,7 @@ fun CreateProjectDialog(onDismiss: () -> Unit, onCreate: (String, String, String
 @Composable
 fun AiGenerateDialog(geminiKey: String, onDismiss: () -> Unit, onGenerate: (String, String) -> Unit) {
     var prompt by remember { mutableStateOf("") }
-    var author by remember { mutableStateOf("@extrapluggram") }
+    var author by remember { mutableStateOf("@exteraPlugGram") }
     var isLoading by remember { mutableStateOf(false) }
 
     AlertDialog(
@@ -409,7 +409,14 @@ fun SettingsDialog(
                     style = MaterialTheme.typography.bodyMedium, 
                     color = MaterialTheme.colorScheme.primary, 
                     fontWeight = FontWeight.SemiBold,
-                    modifier = Modifier.clickable { uriHandler.openUri("https://t.me/slant_tech") }.padding(vertical = 4.dp)
+                    modifier = Modifier.clickable { uriHandler.openUri("https://blog.sl-me.online") }.padding(vertical = 4.dp)
+                )
+                
+                Text(
+                    getLangText("Версия: 0.0.8", "Version: 0.0.8"), 
+                    style = MaterialTheme.typography.labelSmall, 
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(top = 8.dp)
                 )
             }
         },
